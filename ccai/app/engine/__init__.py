@@ -62,7 +62,7 @@ def get_unique_id(location, full_location):
     
     """
     if hasattr(location, 'plus_code'):
-        return location.plus_code.global_code
+        return location.plus_code['global_code']
 
     h = hash(','.join([full_location['latitude'], full_location['longitude']]))
     h += sys.maxsize + 1
