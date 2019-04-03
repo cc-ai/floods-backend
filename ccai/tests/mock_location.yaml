@@ -11,16 +11,16 @@ address_components:
 formatted_address: 6666 Rue Saint-Urbain, Montréal, QC H2S 3H1, Canada
 geometry:
     location:
-        lat: 45.5304828
-        lng: -73.61387789999999
+        lat: '45.5304828'
+        lng: '-73.61387789999999'
     location_type: ROOFTOP
     viewport:
         northeast:
-            lat: 45.5318317802915
-            lng: -73.6125289197085
+            lat: '45.5318317802915'
+            lng: '-73.6125289197085'
         southwest:
-            lat: 45.52913381970851
-            lng: -73.6152268802915
+            lat: '45.52913381970851'
+            lng: '-73.6152268802915'
     partial_match: False
 place_id: ChIJRYm_knIZyUwR-SSXbSSrLWE
 plus_code: 

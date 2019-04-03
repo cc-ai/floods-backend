@@ -4,8 +4,8 @@ import yaml
 
 from ccai.app.engine import find_location
 
-def test_find_location(mock_location, geocoder_result):
-    with patch("googlegeocoder.GoogleGeocoder") as mock:
+def test_find_location(geocoder_result, mock_location):
+    with patch("ccai.app.engine.GoogleGeocoder", key="") as mock:
         geocoder = mock.return_value
         geocoder.get.return_value = [geocoder_result]
 
