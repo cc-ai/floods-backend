@@ -22,6 +22,15 @@ def mock_location():
 
 
 @pytest.fixture
-def geocoder_result(mock_location):
-    """Create a GeocoderResult for mocking."""
-    return GeocoderResult(copy.deepcopy(mock_location))
+def mock_location_no_gc(mock_location):
+    """Create a dictionary of a normal Geocoder request for mocked location
+    without a `group_code`
+    """
+    mock_location.pop('plus_code', None)
+    return mock_location
+
+
+@pytest.fixture
+def mock_location_hash():
+    """Return a deterministic hash for the mocked location"""
+    return "45_5304828__73_61387789999999"

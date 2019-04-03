@@ -4,6 +4,7 @@ from googlegeocoder import GoogleGeocoder
 import google_streetview.api as sw_api
 import google_streetview.helpers as sw_helpers
 
+import hashlib
 import os
 import sys
 
@@ -46,7 +47,7 @@ def get_unique_id(location, full_location):
     
     A unique id is required for the directory containing the StreetView images. If the image
     has a global code, use it. Otherwise, create a string from the longitude and latitude of
-    the address and hash it.
+    the address.
 
     Parameters
     ----------
@@ -58,15 +59,15 @@ def get_unique_id(location, full_location):
     Returns
     -------
     str:
-        Global code or hash of the latitude and longitude
+        Global code or string of the latitude and longitude
     
     """
     if hasattr(location, 'plus_code'):
         return location.plus_code['global_code']
 
-    h = hash(','.join([full_location['latitude'], full_location['longitude']]))
-    h += sys.maxsize + 1
-    return h
+    s = ','.join([full_location['latitude'], full_location['longitude']])
+    s = s.replace("-", "_").replace(".", "_").replace(",", "_")
+    return s
 
 
 def fetch_street_view_images(location):
