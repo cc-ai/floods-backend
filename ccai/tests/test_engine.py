@@ -2,7 +2,7 @@
 from unittest.mock import patch
 import yaml
 
-from app.engine import find_location
+from ccai.app.engine import find_location
 
 def test_find_location(mock_location, geocoder_result):
     with patch("googlegeocoder.GoogleGeocoder") as mock:

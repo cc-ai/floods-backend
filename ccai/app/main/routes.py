@@ -1,6 +1,6 @@
-from app.engine import fetch_street_view_images, find_location
-from app.main import bp
-from config import Config
+from ccai.app.engine import fetch_street_view_images, find_location
+from ccai.app.main import bp
+from ccai.config import Config
 from datetime import datetime
 from flask import abort, send_file
 

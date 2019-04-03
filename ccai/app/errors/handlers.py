@@ -1,4 +1,4 @@
-from app.errors import bp
+from ccai.app.errors import bp
 from flask import jsonify, make_response
 
 @bp.app_errorhandler(404)

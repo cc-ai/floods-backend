@@ -1,4 +1,4 @@
-from config import Config
+from ccai.config import Config
 
 from googlegeocoder import GoogleGeocoder
 import google_streetview.api as sw_api

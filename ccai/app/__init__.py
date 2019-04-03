@@ -1,4 +1,4 @@
-from config import Config
+from ccai.config import Config
 from flask import Flask
 
 import logging
