@@ -1,0 +1,12 @@
+# General info
+include LICENSE
+
+# Exclude development helpers
+exclude tox.ini
+exclude *-requirements.txt
+
+# Include src, tests, docs
+include ccai/api_keys.yaml
+recursive-include ccai *.py
+recursive-include ccai/tests *.py *.yaml *.json *.txt *.yml *.in LICENSE
+include ccai/tests/requirements.txt

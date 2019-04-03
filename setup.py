@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 """Installation script for CCAI backend."""
-from distutils.core import setup
+from setuptools import setup, find_packages
 
-setup_args = dict(
-        name="CCAI-Backend",
-        version="0.dev",
-        description="Flask backend for the CCAI project.",
-        license="Apache",
-        author="F. Corneau-Tremblay",
-        author_email="corneauf@mila.quebec",
-        packages=["ccai",],
-        install_requires=["PyYAML", "python-googlegeocoder", "google-streetview"],
-        tests_require=["pytest"]
-        )
-
-setup(**setup_args)
+setup(name="ccai-backend",
+      version="0.dev",
+      packages=find_packages(),
+      install_requires=["flask", "PyYAML", "python-googlegeocoder", "google-streetview"],
+      tests_require=["pytest"],
+      setup_requires=["setuptools"],
+      author="F. Corneau-Tremblay",
+      author_email="corneauf@mila.quebec",
+      license="Apache",
+      include_package_data=True,
+      package_data={"ccai": ["api_keys.yaml"],
+                    "ccai/tests": ["*.yaml"]}
+)
