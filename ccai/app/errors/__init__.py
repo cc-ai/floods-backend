@@ -1,5 +1,6 @@
+"""Error handling module."""
 from flask import Blueprint
 
 bp = Blueprint('errors', __name__)
 
-from ccai.app.errors import handlers
+from ccai.app.errors import handlers  # noqa

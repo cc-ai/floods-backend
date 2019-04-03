@@ -1,16 +1,13 @@
 #!/usr/bin/env python
-"""Common fixtures for the unittests"""
-import copy
+"""Common fixtures for the unittests."""
 import os
+
 import pytest
 import yaml
 
-from ccai.config import Config
-
-from googlegeocoder import GeocoderResult
-
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 MOCK_LOCATION_FILE = os.path.join(TEST_DIR, "mock_location.yaml")
+
 
 @pytest.fixture
 def mock_location():
@@ -23,14 +20,12 @@ def mock_location():
 
 @pytest.fixture
 def mock_location_no_gc(mock_location):
-    """Create a dictionary of a normal Geocoder request for mocked location
-    without a `group_code`
-    """
+    """Create same as above but without a `global_code`."""
     mock_location.pop('plus_code', None)
     return mock_location
 
 
 @pytest.fixture
 def mock_location_hash():
-    """Return a deterministic hash for the mocked location"""
+    """Return a deterministic hash for the mocked location."""
     return "45_5304828__73_61387789999999"

@@ -1,10 +1,10 @@
 """Collection of tests for the `app.engine` module."""
 import copy
 from unittest.mock import patch
-import yaml
 
 from ccai.app.engine import find_location
 from googlegeocoder import GeocoderResult
+
 
 def test_find_location_with_group_code(mock_location):
     """Test the `find_location` function where the geocoder result has a group_code."""

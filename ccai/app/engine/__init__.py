@@ -1,12 +1,17 @@
-from ccai.config import Config
+"""Engine module.
 
-from googlegeocoder import GoogleGeocoder
+This module hosts the different functions to retrieve a location of
+an address throught the `GoodleGeocoder` API and images of that location
+through the `GoogleStreetView` API.
+
+"""
+import os
+
+from ccai.config import Config
 import google_streetview.api as sw_api
 import google_streetview.helpers as sw_helpers
+from googlegeocoder import GoogleGeocoder
 
-import hashlib
-import os
-import sys
 
 def find_location(address):
     """Find the coordinates of a location.
@@ -35,7 +40,7 @@ def find_location(address):
     full_location = {'address': address,
                      'latitude': latitude,
                      'longitude': longitude
-                    }
+                     }
 
     full_location['global_code'] = str(get_unique_id(location, full_location))
 
@@ -44,7 +49,7 @@ def find_location(address):
 
 def get_unique_id(location, full_location):
     """Return a unique id for that location.
-    
+
     A unique id is required for the directory containing the StreetView images. If the image
     has a global code, use it. Otherwise, create a string from the longitude and latitude of
     the address.
@@ -60,7 +65,7 @@ def get_unique_id(location, full_location):
     -------
     str:
         Global code or string of the latitude and longitude
-    
+
     """
     if hasattr(location, 'plus_code') and location.plus_code['global_code']:
         return location.plus_code['global_code']
@@ -99,6 +104,7 @@ def fetch_street_view_images(location):
 
     return image_dir, results
 
+
 def create_params(location):
     """Create the parameters for the StreetView API call.
 
@@ -120,7 +126,7 @@ def create_params(location):
               'location': stringified_location,
               'pitch': '0',
               'key': Config.STREET_VIEW_API_KEY
-             }
+              }
 
     return params
 

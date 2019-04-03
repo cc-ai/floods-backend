@@ -1,0 +1,5 @@
+tox
+flake8
+flake8-import-order
+flake8-docstrings
+flake8-bugbear
