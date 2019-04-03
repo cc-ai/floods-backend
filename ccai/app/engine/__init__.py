@@ -62,7 +62,7 @@ def get_unique_id(location, full_location):
         Global code or string of the latitude and longitude
     
     """
-    if hasattr(location, 'plus_code'):
+    if hasattr(location, 'plus_code') and location.plus_code['global_code']:
         return location.plus_code['global_code']
 
     s = ','.join([full_location['latitude'], full_location['longitude']])
