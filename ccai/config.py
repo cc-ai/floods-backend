@@ -10,7 +10,7 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(BASE_DIR, 'models.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    API_KEYS_FILE = 'api_keys.yaml'
+    API_KEYS_FILE = os.path.join(BASE_DIR, 'api_keys.yaml')
     SV_PREFIX = 'gsv_{}.jpg'
 
 with open(Config.API_KEYS_FILE, 'r') as f:
