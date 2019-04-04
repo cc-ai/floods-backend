@@ -9,7 +9,8 @@ import os
 import yaml
 
 
-class Config(object):
+# pylint: disable=R0903
+class Config:
     """Configuration object for the `Flask` application.
 
     The `Config` class contains several attributes use by the `Flask` application

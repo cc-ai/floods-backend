@@ -1,3 +1,4 @@
+# pylint: skip-file
 """Module handling the different errors being raised during runtime."""
 from ccai.app.errors import bp
 from flask import jsonify, make_response

@@ -24,6 +24,7 @@ def flood(version, address):
         The actual address to find the images of.
 
     """
+    str(version)
     location = find_location(address)
     image_dir, results = fetch_street_view_images(location)
 

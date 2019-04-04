@@ -70,9 +70,8 @@ def get_unique_id(location, full_location):
     if hasattr(location, 'plus_code') and location.plus_code['global_code']:
         return location.plus_code['global_code']
 
-    s = ','.join([full_location['latitude'], full_location['longitude']])
-    s = s.replace("-", "_").replace(".", "_").replace(",", "_")
-    return s
+    string = ','.join([full_location['latitude'], full_location['longitude']])
+    return string.replace("-", "_").replace(".", "_").replace(",", "_")
 
 
 def fetch_street_view_images(location):
