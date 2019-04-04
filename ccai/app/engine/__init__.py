@@ -1,4 +1,6 @@
-"""Engine module.
+"""
+:mod:`ccai.app.engine` -- API functionalities
+=============================================
 
 This module hosts the different functions to retrieve a location of
 an address throught the `GoodleGeocoder` API and images of that location

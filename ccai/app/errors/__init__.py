@@ -1,4 +1,8 @@
-"""Error handling module."""
+"""
+:mod:`ccai.app.errors` -- Errors handling blueprint
+===================================================
+"""
+
 from flask import Blueprint
 
 bp = Blueprint('errors', __name__)

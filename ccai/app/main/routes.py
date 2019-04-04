@@ -1,4 +1,7 @@
-"""Module handling the routing of the different requests to the backend."""
+"""
+:mod:`ccai.app.main.routes` Routing module
+==========================================
+"""
 import os
 
 from ccai.app.engine import fetch_street_view_images, find_location

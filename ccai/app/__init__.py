@@ -1,4 +1,6 @@
-"""Base module for the CCAI app.
+"""
+:mod:`ccai.app` -- Base module for the `Flask` app
+==================================================
 
 This module serves as the initialization point for all the submodules
 used as well as the different blueprints and loggers.
