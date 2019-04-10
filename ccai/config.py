@@ -41,9 +41,20 @@ class Config:
     API_KEYS_FILE = os.path.join(BASE_DIR, 'api_keys.yaml')
     SV_PREFIX = 'gsv_{}.jpg'
 
+    _API_KEYS_NAME = ['GEO_CODER_API_KEY', 'STREET_VIEW_API_KEY']
 
-with open(Config.API_KEYS_FILE, 'r') as f:
-    keys = yaml.load(f)
 
-    for key, value in keys.items():
-        setattr(Config, key, value)
+if os.path.exists(Config.API_KEYS_FILE):
+    with open(Config.API_KEYS_FILE, 'r') as f:
+        keys = yaml.load(f)
+
+        for key, value in keys.items():
+            setattr(Config, key, value)
+else:
+    for name in Config._API_KEYS_NAME:
+        key = os.environ.get(name, None)
+
+        if key is None:
+            raise ValueError('No API key found for {}'.format(name))
+
+        setattr(Config, name, key)
