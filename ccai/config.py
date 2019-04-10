@@ -41,7 +41,7 @@ class Config:
     API_KEYS_FILE = os.path.join(BASE_DIR, 'api_keys.yaml')
     SV_PREFIX = 'gsv_{}.jpg'
 
-    _API_KEYS_NAME = ['GEO_CODER_API_KEY', 'STREET_VIEW_API_KEY']
+    API_KEYS_NAME = ['GEO_CODER_API_KEY', 'STREET_VIEW_API_KEY']
 
 
 if os.path.exists(Config.API_KEYS_FILE):
@@ -51,7 +51,8 @@ if os.path.exists(Config.API_KEYS_FILE):
         for key, value in keys.items():
             setattr(Config, key, value)
 else:
-    for name in Config._API_KEYS_NAME:
+    for name in Config.API_KEYS_NAME:
+        print(name)
         key = os.environ.get(name, None)
 
         if key is None:
