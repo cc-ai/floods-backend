@@ -7,7 +7,7 @@ an address throught the `GoodleGeocoder` API and images of that location
 through the `GoogleStreetView` API.
 
 """
-import os
+import tempfile
 
 from ccai.config import Config
 import google_streetview.api as sw_api
@@ -75,8 +75,8 @@ def get_unique_id(location, full_location):
 def fetch_street_view_images(location):
     """Retrieve StreetView images for the location.
 
-    Create the parameters for the request and call the StreetView API to retrieve an image
-    of the location and store it under a certain directory.
+    Create the parameters for the request and call the StreetView API to retrieve mutliple
+    images of the location.
 
     Parameters
     ----------
@@ -85,21 +85,17 @@ def fetch_street_view_images(location):
 
     Returns
     -------
-    str:
-        The path to the directory containing the images.
     `google_streetview.api.results`:
         The results of the StreetView call.
 
     """
     params = create_params(location)
-    image_dir = ensure_image_directory(location)
 
     api_list = sw_helpers.api_list(params)
 
     results = sw_api.results(api_list)
-    results.download_links(image_dir)
 
-    return image_dir, results
+    return results
 
 
 def create_params(location):
@@ -128,23 +124,36 @@ def create_params(location):
     return params
 
 
-def ensure_image_directory(location):
-    """Make sure the image directory exists.
+def save_to_database(location, results, fs):
+    """Save the results from Google StreetView to the database.
+
+    Create a temporary directory to download the images then put them inside
+    the database using `GridFS`.
 
     Parameters
     ----------
     location: dict
-        The dictionary returned by `find_location`.
+        Dictionary returned from `find_location`.
+    results : `google_streetview.api.results`
+        Results from `fetch_street_view_images`.
+    fs: `GridFS`
+        A `GridFS` instance to save the images.
 
     Returns
     -------
-    str:
-        Path to the image directory for this location.
+    str
+        Filename of the image inserted in the database.
 
     """
-    image_dir = os.path.join(Config.BASE_DIR, Config.DOWNLOAD_DIR, location['global_code'])
+    # Create a temporary directory to download images
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        results.download_links(tmpdirname)
+        # The name of the downloaded StreetView images
+        download_name = tmpdirname + "/" + Config.SV_PREFIX.format('0')
+        # The name of the image file inside the database
+        # Since we only fetch one image, no need to ensure uniquess
+        filename = location['_id']
 
-    if not os.path.exists(image_dir):
-        os.makedirs(image_dir)
-
-    return image_dir
+        metadata = {'mimetype': 'image/base64'}
+        fs.put(open(download_name, 'rb'), filename=filename, metadata=metadata)
+        return filename

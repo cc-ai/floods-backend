@@ -36,6 +36,7 @@ class Config:
 
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'secret-key'
     DOWNLOAD_DIR = '.data/'
+    MONGO_URI = "mongodb://localhost:27017/ccai_backend"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     ADMINS = ['corneauf@mila.quebec']
     API_KEYS_FILE = os.path.join(BASE_DIR, 'api_keys.yaml')
