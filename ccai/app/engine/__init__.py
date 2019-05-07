@@ -44,7 +44,7 @@ def find_location(address):
                      'longitude': longitude
                      }
 
-    full_location['global_code'] = str(get_unique_id(location, full_location))
+    full_location['_id'] = str(get_unique_id(location, full_location))
 
     return full_location
 
@@ -52,9 +52,8 @@ def find_location(address):
 def get_unique_id(location, full_location):
     """Return a unique id for that location.
 
-    A unique id is required for the directory containing the StreetView images. If the image
-    has a global code, use it. Otherwise, create a string from the longitude and latitude of
-    the address.
+    A unique id is required for the directory containing the StreetView images.
+    Create a string from the longitude and latitude of the address.
 
     Parameters
     ----------
@@ -66,12 +65,9 @@ def get_unique_id(location, full_location):
     Returns
     -------
     str:
-        Global code or string of the latitude and longitude
+        String of the latitude and longitude
 
     """
-    if hasattr(location, 'plus_code') and location.plus_code['global_code']:
-        return location.plus_code['global_code']
-
     string = ','.join([full_location['latitude'], full_location['longitude']])
     return string.replace("-", "_").replace(".", "_").replace(",", "_")
 
