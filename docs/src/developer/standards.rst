@@ -26,7 +26,7 @@ You can find the list of flake8 plugins under the ``dev-requirements.txt`` file.
 Project Structure
 =================
 
-The project follows a simple Flask_ structure. At the top level ``floods.py``
+The project follows a simple Flask_ structure. At the top level ``ganify.py``
 creates the ``app``. Under the ``ccai/`` directory, you will find a ``config.py``
 file for the configuration process of ``Flask``. Then, under ``ccai/app`` you will
 find directories for the followings:
