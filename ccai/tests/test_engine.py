@@ -1,6 +1,6 @@
 """Collection of tests for the `app.engine` module."""
 import copy
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from ccai.app.engine import find_location, get_unique_id
 from googlegeocoder import GeocoderResult

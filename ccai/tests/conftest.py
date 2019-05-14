@@ -2,6 +2,8 @@
 """Common fixtures for the unittests."""
 import os
 
+from gridfs import GridFS
+from pymongo import MongoClient
 import pytest
 import yaml
 
@@ -19,13 +21,18 @@ def mock_location():
 
 
 @pytest.fixture
-def mock_location_no_gc(mock_location):
-    """Create same as above but without a `global_code`."""
-    mock_location.pop('plus_code', None)
-    return mock_location
-
-
-@pytest.fixture
 def mock_location_hash():
     """Return a deterministic hash for the mocked location."""
     return "45_5304828__73_61387789999999"
+
+
+@pytest.fixture
+def database():
+    """Return a new empty database"""
+    return MongoClient()['database']
+
+
+@pytest.fixture
+def gridfs(database):
+    """Return a GridFS instance"""
+    return GridFS(database, collection="test")
