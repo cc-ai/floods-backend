@@ -30,3 +30,18 @@ def test_find_location(mock_location, mock_location_hash):
         assert full_location['latitude'] == mock_location['geometry']['location']['lat']
         assert full_location['longitude'] == mock_location['geometry']['location']['lng']
         assert full_location['_id'] == mock_location_hash
+
+'''
+@patch("tempfile.TemporaryDirectory")
+def test_save_to_database(gridfs, mock_location_hash, mock_tmp):
+    """Test if a file is correctly saved inside `GridFS`."""
+    with tempfile.TemporaryDirectory as name:
+        mock_tmp.return_value.__enter__.return_value = name
+        location = {'_id': mock_location_hash}
+
+        results = Mock()
+
+        with patch.object(app.engine, "_get_download_name",
+                          return_value=name + '/' + \
+                                Config.SV_PREFIX.format(0)):
+            '''

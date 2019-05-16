@@ -36,3 +36,8 @@ def database():
 def gridfs(database):
     """Return a GridFS instance"""
     return GridFS(database, collection="test")
+
+
+@pytest.fixture
+def image_name():
+    return ""
