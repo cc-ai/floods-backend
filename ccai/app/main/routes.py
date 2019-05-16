@@ -2,11 +2,11 @@
 :mod:`ccai.app.main.routes` Routing module
 ==========================================
 """
-from ccai.app import app, mongo
+from ccai.app import mongo
 from ccai.app.engine import fetch_street_view_images, find_location, save_to_database
 from ccai.app.main import bp
 import ccai.app.utils as utils
-from flask import abort, request
+from flask import abort, current_app, request
 from gridfs import GridFS
 from werkzeug.utils import secure_filename
 
@@ -55,13 +55,13 @@ def upload_file():
     """
     if request.method == 'POST':
         if 'file' not in request.files:
-            app.logger.error('Request sent with no `file` key.')
+            current_app.logger.error('Request sent with no `file` key.')
             return utils.make_response(500, "Error: no file", data={})
 
         file = request.files['file']
 
         if file.filename == '':
-            app.logger.error('File sent with no filename')
+            current_app.logger.error('File sent with no filename')
             return utils.make_response(500, "Error: no filename", data={})
 
         if file and utils.allowed_file(file.filename):
@@ -69,6 +69,6 @@ def upload_file():
             fs = GridFS(mongo.db)
             metadata = utils.get_gridfs_metadata()
             fs.put(file.stream, filename=filename, metadata=metadata)
-            app.logger.info("Image upload: {}".format(filename))
+            current_app.logger.info("Image upload: {}".format(filename))
 
     return utils.make_response(200, "Success", data={})
