@@ -6,6 +6,7 @@
 from ccai.app import mongo
 from ccai.app.engine import fetch_street_view_images, find_location, save_to_database
 from ccai.app.main import bp
+from ccai.app.main.file_upload import upload_image, upload_zip
 import ccai.app.utils as utils
 from flask import current_app, request
 
@@ -54,19 +55,18 @@ def upload_file():
     if request.method == 'POST':
         if 'file' not in request.files:
             current_app.logger.error('Request sent with no `file` key.')
-            return utils.make_response(500, "Error: no file", data={})
+            return utils.make_response(200, "Error: no file", data={})
 
         file = request.files['file']
 
         if file.filename == '':
             current_app.logger.error('File sent with no filename')
-            return utils.make_response(500, "Error: no filename", data={})
+            return utils.make_response(200, "Error: no filename", data={})
 
         if file and utils.allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            fs = GridFS(mongo.db)
-            metadata = utils.get_gridfs_metadata()
-            fs.put(file.stream, filename=filename, metadata=metadata)
-            current_app.logger.info("Image upload: {}".format(filename))
+            if file.filename.endswith('.zip'):
+                upload_zip(file)
+            else:
+                upload_image(file)
 
     return utils.make_response(200, "Success", data={})
