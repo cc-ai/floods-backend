@@ -2,13 +2,12 @@
 :mod:`ccai.app.main.routes` Routing module
 ==========================================
 """
+
 from ccai.app import mongo
 from ccai.app.engine import fetch_street_view_images, find_location, save_to_database
 from ccai.app.main import bp
 import ccai.app.utils as utils
-from flask import abort, current_app, request
-from gridfs import GridFS
-from werkzeug.utils import secure_filename
+from flask import current_app, request
 
 
 @bp.route('/address/<version>/<string:address>', methods=['GET'])
@@ -32,11 +31,10 @@ def ganify(version, address):
     results = fetch_street_view_images(location)
 
     if results.metadata[0]['status'] != 'OK':
-        abort(404)
+        return utils.make_response(200, "Error with StreetView", {})
 
     # Open a GridFS instance to save the image
-    fs = GridFS(mongo.db)
-    filename = save_to_database(location, results, fs)
+    filename = save_to_database(location, results)
 
     # There is a problem with the implementation of `flask_pymongo`
     # See issue `https://github.com/dcrosta/flask-pymongo/issues/120`

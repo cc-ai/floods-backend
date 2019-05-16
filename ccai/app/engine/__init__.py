@@ -9,7 +9,7 @@ through the `GoogleStreetView` API.
 """
 import tempfile
 
-import ccai.app.utils as utils
+from ccai.app.database import save_image
 from ccai.config import Config
 import google_streetview.api as sw_api
 import google_streetview.helpers as sw_helpers
@@ -125,7 +125,7 @@ def create_params(location):
     return params
 
 
-def save_to_database(location, results, fs):
+def save_to_database(location, results):
     """Save the results from Google StreetView to the database.
 
     Create a temporary directory to download the images then put them inside
@@ -137,8 +137,6 @@ def save_to_database(location, results, fs):
         Dictionary returned from `find_location`.
     results : `google_streetview.api.results`
         Results from `fetch_street_view_images`.
-    fs: `GridFS`
-        A `GridFS` instance to save the images.
 
     Returns
     -------
@@ -156,8 +154,7 @@ def save_to_database(location, results, fs):
         # Since we only fetch one image, no need to ensure uniquess
         filename = location['_id']
 
-        metadata = utils.get_gridfs_metadata()
-        fs.put(open(download_name, 'rb'), filename=filename, metadata=metadata)
+        save_image(open(download_name, 'rb'), filename=filename)
         return filename
 
 
