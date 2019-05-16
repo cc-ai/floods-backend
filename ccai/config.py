@@ -41,6 +41,7 @@ class Config:
     ADMINS = ['corneauf@mila.quebec']
     API_KEYS_FILE = os.path.join(BASE_DIR, 'api_keys.yaml')
     SV_PREFIX = 'gsv_{}.jpg'
+    ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
 
     API_KEYS_NAME = ['GEO_CODER_API_KEY', 'STREET_VIEW_API_KEY']
 

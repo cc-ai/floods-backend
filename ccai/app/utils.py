@@ -2,7 +2,10 @@
 :mod:`ccai.app.utils` Utility functions
 =======================================
 """
+import json
+
 from ccai.config import Config
+from flask import Response
 
 
 def allowed_file(filename):
@@ -33,3 +36,32 @@ def get_gridfs_metadata():
 
     """
     return {'mimetype': 'image/base64'}
+
+
+def make_response(response_code, message, data, mimetype='application/json'):
+    """Return a `Flask.Response` object with given attributes.
+
+    Parameters
+    ----------
+    response_code : int
+        Request response code.
+    message : str
+        Request message.
+    data : dict
+        Request dictionary of data to send.
+    mimetype : str, optional
+        The mimetype of this request.
+
+    Returns
+    -------
+    `Flask.Response`
+        A ready-to-send response.
+
+    """
+    if not data:
+        data = json.dumps({
+            "message": message,
+            "data": {}
+        })
+
+    return Response(data, response_code, mimetype=mimetype)

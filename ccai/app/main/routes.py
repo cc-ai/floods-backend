@@ -2,15 +2,17 @@
 :mod:`ccai.app.main.routes` Routing module
 ==========================================
 """
-from ccai.app import mongo
+from ccai.app import app, mongo
 from ccai.app.engine import fetch_street_view_images, find_location, save_to_database
 from ccai.app.main import bp
-from flask import abort
+import ccai.app.utils as utils
+from flask import abort, request
 from gridfs import GridFS
+from werkzeug.utils import secure_filename
 
 
 @bp.route('/address/<version>/<string:address>', methods=['GET'])
-def flood(version, address):
+def ganify(version, address):
     """Handle requests to `/address/` webpage.
 
     This function is called when a request of the form found in the route
@@ -42,3 +44,31 @@ def flood(version, address):
     response = mongo.send_file(filename)
     response.mimetype = 'image/base64'
     return response
+
+
+@bp.route('/upload_file', methods=['GET', 'POST'])
+def upload_file():
+    """Handle requests to `upload_file`.
+
+    This endpoint uploads a picture to the database.
+
+    """
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            app.logger.error('Request sent with no `file` key.')
+            return utils.make_response(500, "Error: no file", data={})
+
+        file = request.files['file']
+
+        if file.filename == '':
+            app.logger.error('File sent with no filename')
+            return utils.make_response(500, "Error: no filename", data={})
+
+        if file and utils.allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            fs = GridFS(mongo.db)
+            metadata = utils.get_gridfs_metadata()
+            fs.put(file.stream, filename=filename, metadata=metadata)
+            app.logger.info("Image upload: {}".format(filename))
+
+    return utils.make_response(200, "Success", data={})
