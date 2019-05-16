@@ -79,6 +79,9 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# PyCharm folder
+.idea
+
 # pyenv
 .python-version
 
