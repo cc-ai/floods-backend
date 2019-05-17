@@ -11,6 +11,10 @@ import os
 
 from ccai.config import Config
 from flask import Flask
+from flask_pymongo import PyMongo
+
+
+mongo = PyMongo()
 
 
 def create_app(config_class=Config):
@@ -30,6 +34,8 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    mongo.init_app(app)
+
     from ccai.app.errors import bp as errors_bp
     app.register_blueprint(errors_bp)
 
@@ -40,7 +46,7 @@ def create_app(config_class=Config):
         if not os.path.exists('logs'):
             os.mkdir('logs')
 
-        file_handler = RotatingFileHandler('logs/floods.log', maxBytes=10240, backupCount=10)
+        file_handler = RotatingFileHandler('logs/ganify.log', maxBytes=10240, backupCount=10)
         file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s '
                                                     '[in %(pathname)s:%(lineno)d]'))
 
@@ -48,6 +54,6 @@ def create_app(config_class=Config):
         app.logger.addHandler(file_handler)
 
         app.logger.setLevel(logging.INFO)
-        app.logger.info('Floods started.')
+        app.logger.info('Ganify started.')
 
     return app

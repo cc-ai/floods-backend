@@ -2,16 +2,17 @@
 :mod:`ccai.app.main.routes` Routing module
 ==========================================
 """
-import os
 
-from ccai.app.engine import fetch_street_view_images, find_location
+from ccai.app import mongo
+from ccai.app.engine import fetch_street_view_images, find_location, save_to_database
 from ccai.app.main import bp
-from ccai.config import Config
-from flask import abort, send_file
+from ccai.app.main.file_upload import upload_image, upload_zip
+import ccai.app.utils as utils
+from flask import current_app, request
 
 
 @bp.route('/address/<version>/<string:address>', methods=['GET'])
-def flood(version, address):
+def ganify(version, address):
     """Handle requests to `/address/` webpage.
 
     This function is called when a request of the form found in the route
@@ -27,13 +28,45 @@ def flood(version, address):
         The actual address to find the images of.
 
     """
-    str(version)
     location = find_location(address)
-    image_dir, results = fetch_street_view_images(location)
+    results = fetch_street_view_images(location)
 
     if results.metadata[0]['status'] != 'OK':
-        abort(404)
+        return utils.make_response(200, "Error with StreetView", {})
 
-    image_name = os.path.join(image_dir, Config.SV_PREFIX.format('0'))
+    # Open a GridFS instance to save the image
+    filename = save_to_database(location, results)
 
-    return send_file(image_name, mimetype='image/gif')
+    # There is a problem with the implementation of `flask_pymongo`
+    # See issue `https://github.com/dcrosta/flask-pymongo/issues/120`
+    # We need to manually update the mimetype for the image
+    response = mongo.send_file(filename)
+    response.mimetype = 'image/base64'
+    return response
+
+
+@bp.route('/upload_file', methods=['GET', 'POST'])
+def upload_file():
+    """Handle requests to `upload_file`.
+
+    This endpoint uploads a picture to the database.
+
+    """
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            current_app.logger.error('Request sent with no `file` key.')
+            return utils.make_response(200, "Error: no file", data={})
+
+        file = request.files['file']
+
+        if file.filename == '':
+            current_app.logger.error('File sent with no filename')
+            return utils.make_response(200, "Error: no filename", data={})
+
+        if file and utils.allowed_file(file.filename):
+            if file.filename.endswith('.zip'):
+                upload_zip(file)
+            else:
+                upload_image(file)
+
+    return utils.make_response(200, "Success", data={})

@@ -1,13 +1,24 @@
 """Collection of tests for the `app.engine` module."""
 import copy
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from ccai.app.engine import find_location
+from ccai.app.engine import find_location, get_unique_id
 from googlegeocoder import GeocoderResult
 
 
-def test_find_location_with_group_code(mock_location):
-    """Test the `find_location` function where the geocoder result has a group_code."""
+def test_get_unique_id(mock_location, mock_location_hash):
+    """Test `get_unique_id` function."""
+    location = ['geometry']['location']
+    lat = location['lat']
+    lng = location['lng']
+    location_dict = {'latitude': lat, 'longitude': lng}
+    _id = get_unique_id(location_dict)
+
+    assert _id == mock_location_hash
+
+
+def test_find_location(mock_location, mock_location_hash):
+    """Test the `find_location` function."""
     with patch("ccai.app.engine.GoogleGeocoder", key="") as mock:
         geocoder_result = GeocoderResult(copy.deepcopy(mock_location))
         geocoder = mock.return_value
@@ -18,20 +29,19 @@ def test_find_location_with_group_code(mock_location):
         assert full_location['address'] == "mila"
         assert full_location['latitude'] == mock_location['geometry']['location']['lat']
         assert full_location['longitude'] == mock_location['geometry']['location']['lng']
-        assert full_location['global_code'] == mock_location['plus_code']['global_code']
+        assert full_location['_id'] == mock_location_hash
 
+'''
+@patch("tempfile.TemporaryDirectory")
+def test_save_to_database(gridfs, mock_location_hash, mock_tmp):
+    """Test if a file is correctly saved inside `GridFS`."""
+    with tempfile.TemporaryDirectory as name:
+        mock_tmp.return_value.__enter__.return_value = name
+        location = {'_id': mock_location_hash}
 
-def test_find_location_without_group_code(mock_location_no_gc, mock_location_hash):
-    """Test the `find_location` function where the geocoder result has no group_code."""
-    with patch("ccai.app.engine.GoogleGeocoder", key="") as mock:
-        geocoder_result = GeocoderResult(copy.deepcopy(mock_location_no_gc))
-        geocoder = mock.return_value
-        geocoder.get.return_value = [geocoder_result]
+        results = Mock()
 
-        full_location = find_location("mila")
-        print(full_location)
-
-        assert full_location['address'] == "mila"
-        assert full_location['latitude'] == mock_location_no_gc['geometry']['location']['lat']
-        assert full_location['longitude'] == mock_location_no_gc['geometry']['location']['lng']
-        assert full_location['global_code'] == mock_location_hash
+        with patch.object(app.engine, "_get_download_name",
+                          return_value=name + '/' + \
+                                Config.SV_PREFIX.format(0)):
+            '''
