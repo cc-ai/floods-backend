@@ -4,4 +4,5 @@
 .. toctree::
     :maxdepth: 1
 
+    main/file_upload
     main/routes

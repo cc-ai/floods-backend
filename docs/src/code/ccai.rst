@@ -3,6 +3,7 @@
 
 .. toctree::
     :maxdepth: 2
-    :caption: CCAI backend base
+    :caption: CC-AI backend base
 
     ccai/app
+    ccai/config

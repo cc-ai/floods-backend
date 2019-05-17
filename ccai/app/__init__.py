@@ -22,7 +22,7 @@ def create_app(config_class=Config):
 
     Parameters
     ----------
-    config_class: obj
+    config_class: ccai.config.Config
         A configuration class containing the useful attributes for the `Flask` constructor.
 
     Returns

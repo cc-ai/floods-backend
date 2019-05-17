@@ -1,4 +1,7 @@
 """
+:mod:`ccai.config` -- Configuration class for the `Flask` app
+=============================================================
+
 Configuration for the `Flask` application.
 
 This module hosts the `Config` class, which is used by the `Flask` application

@@ -1,6 +1,6 @@
-************
-CCAI backend
-************
+***************************
+CC-AI Backend Documentation
+***************************
 
 .. toctree::
    :maxdepth: 2
