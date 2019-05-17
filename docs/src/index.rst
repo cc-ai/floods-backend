@@ -1,6 +1,6 @@
-************
-CCAI backend
-************
+***************************
+CC-AI Backend Documentation
+***************************
 
 .. toctree::
    :maxdepth: 2
@@ -14,3 +14,4 @@ CCAI backend
 
     developer/documenting
     developer/standards
+    developer/usage
