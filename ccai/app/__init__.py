@@ -12,6 +12,7 @@ import os
 from ccai.config import Config
 from flask import Flask
 from flask_pymongo import PyMongo
+from flask_cors import CORS
 
 
 mongo = PyMongo()
@@ -33,6 +34,7 @@ def create_app(config_class=Config):
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
+    CORS(app)
 
     mongo.init_app(app)
 
