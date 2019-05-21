@@ -8,7 +8,7 @@ from ccai.app.engine import fetch_street_view_images, find_location, save_to_dat
 from ccai.app.main import bp
 from ccai.app.main.file_upload import upload_image, upload_zip
 import ccai.app.utils as utils
-from flask import current_app, request
+from flask import abort, current_app, request
 
 
 @bp.route('/address/<version>/<string:address>', methods=['GET'])
@@ -28,8 +28,18 @@ def ganify(version, address):
         The actual address to find the images of.
 
     """
-    location = find_location(address)
+    try:
+        location = find_location(address)
+    except ValueError as exc:
+        if str(exc) != 'ZERO_RESULTS':
+            raise exc
+        abort(404)
+
     results = fetch_street_view_images(location)
+    if results.metadata:
+        for metadata in results.metadata:
+            if metadata.get('status', '') == 'ZERO_RESULTS':
+                abort(404)
 
     if results.metadata[0]['status'] != 'OK':
         return utils.make_response(200, "Error with StreetView", {})
