@@ -2,8 +2,6 @@
 :mod:`ccai.config` -- Configuration class for the `Flask` app
 =============================================================
 
-Configuration for the `Flask` application.
-
 This module hosts the `Config` class, which is used by the `Flask` application
 to initialized certain modules.
 """
@@ -17,23 +15,22 @@ class Config:
     """Configuration object for the `Flask` application.
 
     The `Config` class contains several attributes use by the `Flask` application
-    to initialize modules. It also contains certain value specific to the application
-    use.
+    to initialize modules. It also contains certain values specific to the use of the application.
 
     Attributes
     ----------
-    SECRET_KEY: str
-        Secret key used by the app. Normally defined as an environment variable.
-    DOWNLOAD_DIR: str
-        The download directory for the StreeView images.
-    BASE_DIR: str
-        The current base directory for the CCAI module.
-    ADMINS: list
-        List of emails for the admins.
-    API_KEYS_FILE: str
-        File containing the different keys for the Google APIs.
-    SV_PREFIX: str,
-        Prefix of the images returned by the StreetView API.
+    SECRET_KEY : str
+                 Secret key used by the app. Normally defined as an environment variable.
+    DOWNLOAD_DIR : str
+                   The download directory for the StreeView images.
+    BASE_DIR : str
+               The current base directory for the CCAI module.
+    ADMINS : list
+             List of emails for the admins.
+    API_KEYS_FILE : str
+                    File containing the different keys for the Google APIs.
+    SV_PREFIX : str
+                Prefix of the images returned by the StreetView API.
 
     """
 
