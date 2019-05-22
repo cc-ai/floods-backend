@@ -3,10 +3,10 @@ CC-AI Backend Documentation
 ***************************
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Code Reference
+    :maxdepth: 2
+    :caption: Code Reference
 
-   code/ccai
+    source/modules
 
 .. toctree::
     :caption: Developer's Guide
