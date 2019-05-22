@@ -34,3 +34,22 @@ To run the server, simply follow these steps:
 7. Run the ``Flask`` app::
 
     flask run
+
+
+Build the documentation
+-----------------------
+Since the documentation for this project is not hosted anywhere, you need to build it yourself.
+
+1. Install the dev. requirements::
+
+   pip install -r dev-requirements.txt
+
+2. Build the docs::
+
+   tox -e docs
+
+3. Host the docs::
+
+   tox -e host-docs
+
+The `docs` environment will call `sphinx-apidoc` and `sphinx-build` to create the HTML pages which will then be hosted on a local server on port 8000 when running `host-docs`.
