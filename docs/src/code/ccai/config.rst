@@ -1,2 +1,0 @@
-.. automodule:: ccai.config
-    :members:
