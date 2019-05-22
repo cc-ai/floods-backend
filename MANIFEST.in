@@ -1,0 +1,19 @@
+# General info
+include LICENSE
+include *.rst
+
+# Exclude development helpers
+exclude .travis.yml
+exclude tox.ini
+exclude .pylintrc
+exclude codecov.yml
+exclude *-requirements.txt
+
+# Include src, tests, docs
+include ccai/api_keys.yaml
+recursive-include ccai *.py
+recursive-include ccai/tests *.py *.yaml *.json *.txt *.yml *.in LICENSE
+recursive-include docs *.rst *.py *.gitkeep
+include docs/requirements.txt
+prune docs/build
+include ccai/tests/requirements.txt
