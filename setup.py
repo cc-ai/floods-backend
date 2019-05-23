@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 setup(name="ccai-backend",
       version="0.dev",
       packages=find_packages(),
-      install_requires=["flask", "PyYAML", "python-googlegeocoder", "google-streetview", "Flask-PyMongo", "flask-cors"],
+      install_requires=["flask", "PyYAML", "python-googlegeocoder", "google-streetview", "Flask-PyMongo", "flask-cors", "python-google-places"],
       tests_require=["pytest"],
       setup_requires=["setuptools"],
       author="F. Corneau-Tremblay",

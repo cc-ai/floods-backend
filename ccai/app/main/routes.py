@@ -4,11 +4,14 @@
 """
 
 from ccai.app import mongo
-from ccai.app.engine import fetch_street_view_images, find_location, save_to_database
+from ccai.app.engine import fetch_street_view_images, find_location, save_to_database, auto_complete
 from ccai.app.main import bp
 from ccai.app.main.file_upload import upload_image, upload_zip
 import ccai.app.utils as utils
 from flask import abort, current_app, request
+import json
+import base64
+import urllib.parse
 
 
 @bp.route('/address/<version>/<string:address>', methods=['GET'])
@@ -28,6 +31,7 @@ def ganify(version, address):
         The actual address to find the images of.
 
     """
+    address = urllib.parse.unquote(base64.b64decode(address).decode())
     try:
         location = find_location(address)
     except ValueError as exc:
@@ -53,6 +57,13 @@ def ganify(version, address):
     response = mongo.send_file(filename)
     response.mimetype = 'image/base64'
     return response
+
+
+@bp.route('/autocomplete/<string:text>', methods=['GET'])
+def autocomplete(text):
+    text = urllib.parse.unquote(base64.b64decode(text).decode())
+    autocomplete_list = auto_complete(text)
+    return utils.make_response(200, 'Success', data=json.dumps(autocomplete_list), mimetype='application/json')
 
 
 @bp.route('/upload_file', methods=['GET', 'POST'])

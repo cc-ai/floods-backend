@@ -14,6 +14,7 @@ from ccai.config import Config
 import google_streetview.api as sw_api
 import google_streetview.helpers as sw_helpers
 from googlegeocoder import GoogleGeocoder
+from googleplaces import GooglePlaces
 
 
 def find_location(address):
@@ -48,6 +49,14 @@ def find_location(address):
     full_location['_id'] = str(get_unique_id(location, full_location))
 
     return full_location
+
+
+def auto_complete(input):
+    google_places = GooglePlaces(Config.GOOGLE_PLACE_API_KEY)
+    radius = 5000
+
+    query_result = google_places.autocomplete(input=input, radius=radius)
+    return [place.description for place in query_result.predictions]
 
 
 def get_unique_id(location, full_location):
