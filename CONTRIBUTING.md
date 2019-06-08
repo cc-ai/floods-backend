@@ -4,7 +4,8 @@ This document has the following sections:
 
 - [Setup](#setup)
 - [Testing](#testing)
-- [Running the Server](#running-the-server)
+- [Running The Server](#running-the-server)
+- [Building The Container](#building-the-container)
 
 ## Setup
 
@@ -41,3 +42,32 @@ For a more production-ready server, run the following, which will use [`gunicorn
 ```
 make serve
 ```
+
+# Building The Container
+
+To build a container which can run the application server, use the following Make command:
+
+```
+make container
+```
+
+Under the hood, this will run a `docker build` command with the appropriate container tag, environment variables, etc. If the command is successful, a container name will be printed out at the end. You might see something like:
+
+```
+Step 19/19 : CMD gunicorn -w $WORKERS -b 0.0.0.0:80 ccai.app.bin.webserver:app
+ ---> Using cache
+ ---> 5aac2c0f7c37
+Successfully built 5aac2c0f7c37
+Successfully tagged ccai/floods-backend:f2be8ff7ef4162e74ea848120aa7c20f90251249
+```
+
+You can then take this container name (the part after "Successfully tagged") and run it as such:
+
+```
+docker run \
+  -e WORKERS=$(sysctl -n hw.ncpu) \
+  -p 5000:80 \
+  ccai/floods-backend:f2be8ff7ef4162e74ea848120aa7c20f90251249
+```
+
+As you can see here, you are also able to map port 80 in the container to port 5000 locally as well as specify the number of worker processes to use via the `WORKERS` environment variable.
