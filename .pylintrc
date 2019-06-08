@@ -4,7 +4,7 @@ init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.app
 disable=bad-continuation,missing-docstring,len-as-condition
 
 [TYPECHECK]
-ignored-modules=numpy,torch,ahocorasick,cv2
+ignored-modules=numpy,torch
 ignored-classes=numpy,torch
 generated-members=numpy.*,torch.*
 
