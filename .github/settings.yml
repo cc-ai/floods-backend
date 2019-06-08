@@ -1,0 +1,84 @@
+labels:
+  - name: "bug"
+    color: "d73a4a"
+    description: "Something isn't working"
+
+  - name: "domain:behavioral"
+    color: "f4b7c4"
+    description: ""
+
+  - name: "domain:climate"
+    color: "fcddc4"
+    description: ""
+
+  - name: "domain:data"
+    color: "bfdadc"
+    description: ""
+
+  - name: "domain:dev"
+    color: "d4c5f9"
+    description: ""
+
+  - name: "domain:econ"
+    color: "036a77"
+    description: ""
+
+  - name: "domain:meta"
+    color: "202ea5"
+    description: "Things about the cc-ai workflow and project management"
+
+  - name: "domain:ml"
+    color: "f260b8"
+    description: ""
+
+  - name: "domain:other"
+    color: "e0a87f"
+    description: ""
+
+  - name: "domain:ux"
+    color: "fccfbd"
+    description: ""
+
+  - name: "duplicate"
+    color: "cfd3d7"
+    description: "This issue or pull request already exists"
+
+  - name: "good first issue"
+    color: "7057ff"
+    description: "Good for newcomers"
+
+  - name: "help wanted"
+    color: "008672"
+    description: "Extra attention is needed"
+
+  - name: "invalid"
+    color: "e4e669"
+    description: "This doesn't seem right"
+
+  - name: "keep in mind"
+    color: "c0cef7"
+    description: "Random ideas we ought to keep in mind"
+
+  - name: "priority:critical"
+    color: "FF0000"
+    description: "WOWOWOW This needs fixing now"
+
+  - name: "priority:high"
+    color: "16f9c1"
+    description: ""
+
+  - name: "priority:low"
+    color: "efff8c"
+    description: ""
+
+  - name: "question"
+    color: "d876e3"
+    description: "Further information is requested"
+
+  - name: "wontfix"
+    color: "ffffff"
+    description: "This will not be worked on"
+
+  - name: "work in progress"
+    color: "ededed"
+    description: ""
