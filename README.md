@@ -43,6 +43,8 @@ Run a development server:
 make develop
 ```
 
+The API server will now be available at http://127.0.0.1:5000. See the [API Endpoints](#api-endpoints) section for available endpoints.
+
 ## API Endpoints
 
 Once you're running the webserver locally, there are a few API endpoints that are available.

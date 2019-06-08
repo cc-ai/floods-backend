@@ -16,8 +16,6 @@ class Config(Singleton):
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
-    SV_PREFIX = "gsv_{}.jpg"
-    ALLOWED_EXTENSIONS = set(["png", "jpg", "jpeg", "zip"])
 
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
 
