@@ -6,7 +6,7 @@ test:
 	python -m unittest discover ccai/tests
 
 develop:
-	FLASK_APP=ccai/app/bin/webserver.py FLASK_DEBUG=1 python -m flask run
+	FLASK_APP=ccai/app/bin/webserver.py DEBUG=1 FLASK_DEBUG=1 python -m flask run
 
 format:
 	black .

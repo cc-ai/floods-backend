@@ -3,7 +3,6 @@ The `Config` class is used by the `Flask` application for accessing various
 bits of application configuration
 """
 
-import logging
 import os
 
 import yaml
@@ -16,7 +15,7 @@ class Config(Singleton):
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
+    API_KEYS_FILE = os.path.join(BASE_DIR, "../../api_keys.yaml")
 
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
 
@@ -37,7 +36,6 @@ class Config(Singleton):
                 value = os.environ.get(key, None)
 
                 if value is None:
-                    logging.debug("No API key found for %s", key)
                     value = ""
 
                 setattr(self, key, value)
