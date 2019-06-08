@@ -11,7 +11,7 @@ import tempfile
 from flask import Flask, Response, jsonify, send_file
 import prometheus_client
 
-from ccai.app.engine.streetview import find_location, fetch_street_view_images
+from ccai.app.streetview import find_location, fetch_street_view_images
 
 DEBUG = os.environ.get("DEBUG", False)
 

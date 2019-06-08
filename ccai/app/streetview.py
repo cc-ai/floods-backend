@@ -11,7 +11,7 @@ import google_streetview.api as sw_api
 import google_streetview.helpers as sw_helpers
 from googlegeocoder import GoogleGeocoder
 
-from ccai.config import Config
+from ccai.app.config import Config
 
 
 def find_location(address):

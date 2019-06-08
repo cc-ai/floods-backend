@@ -4,7 +4,7 @@ Unit tests for the application configuration
 
 import unittest
 
-from ccai.config import Config
+from ccai.app.config import Config
 
 
 class TestConfig(unittest.TestCase):
