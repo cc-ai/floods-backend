@@ -8,6 +8,7 @@ For a more detailed motivation explanation, read through our [2 page executive s
 This document has the following sections:
 
 - [How Does This Thing Work?](#how-does-this-thing-work)
+- [Getting Started](#getting-started)
 - [API Endpoints](#api-endpoints)
 
 There are also the following documents which may be useful depending on your objectives:
@@ -18,7 +19,33 @@ There are also the following documents which may be useful depending on your obj
 
 This server is an API server written in [Python](https://python.org/) using the [Flask](http://flask.pocoo.org/) microframework. The server code is in [`ccai/app/`](./ccai/app/) and the tests are in [`ccai/test/`](./ccai/test/). For more information on running the server, see the [Contributor Guide](./CONTRIBUTING.md).
 
+## Getting Started
+
+For a thorough accounting of how to set up this repo and use the various developer tools that are setup, you can read the [Contributor Guide](./CONTRIBUTING.md). Alternatively, the following is a minimal set of commands that you can run to get up and running as quickly as possible:
+
+Clone the repo:
+
+```
+mkdir -p ~/git
+git clone https://github.com/cc-ai/floods-backend ~/git/floods-backend
+cd ~/git/floods-backend
+```
+
+Install the Python dependencies into your current Python environment (should be at least Python 3.7):
+
+```
+pip install -r ccai/requirements.txt
+```
+
+Run a development server:
+
+```
+make develop
+```
+
 ## API Endpoints
+
+Once you're running the webserver locally, there are a few API endpoints that are available.
 
 ### Fetching An Image For An Address
 
