@@ -3,6 +3,7 @@ The `Config` class is used by the `Flask` application for accessing various
 bits of application configuration
 """
 
+import logging
 import os
 
 import yaml
@@ -36,7 +37,8 @@ class Config(Singleton):
                 value = os.environ.get(key, None)
 
                 if value is None:
-                    raise ValueError("No API key found for {}".format(key))
+                    logging.debug("No API key found for %s", key)
+                    value = ""
 
                 setattr(self, key, value)
 
