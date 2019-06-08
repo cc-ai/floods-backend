@@ -51,12 +51,19 @@ Once you're running the webserver locally, there are a few API endpoints that ar
 
 ### Fetching An Image For An Address
 
-TODO
+To download an image of an address, you can use the `/address/{version}/{address}` endpoint. Note that this endpoint is currently under development, but it will return a real image of the address!
+
+The version can be any string and the address should be a URL encoded address. To download a picture of Mila, you could run the following `curl` command locally:
+
+```
+curl http://127.0.0.1:5000/address/cyclegan/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada > mila.jpg
+open mila.jpg
+```
 
 ### Prometheus Metrics
 
 There is a Prometheus compatible metrics endpoint at `/metrics`. A simple HTTP GET will return a plain text response with metrics in the standard Prometheus format:
 
 ```
-curl localhost:5000/metrics
+curl http://127.0.0.1:5000/metrics
 ```
