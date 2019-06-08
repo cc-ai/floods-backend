@@ -1,7 +1,7 @@
 export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
 test:
-	python -m unittest discover ccai/test
+	python -m unittest discover ccai/tests
 
 develop:
 	FLASK_APP=ccai/app/bin/webserver.py FLASK_DEBUG=1 python -m flask run
