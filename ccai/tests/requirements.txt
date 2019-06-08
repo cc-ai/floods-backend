@@ -1,3 +1,0 @@
-pytest
-python-googlegeocoder
-flake8

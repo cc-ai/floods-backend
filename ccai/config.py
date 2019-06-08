@@ -34,30 +34,31 @@ class Config:
 
     """
 
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'secret-key'
-    DOWNLOAD_DIR = '.data/'
-    MONGO_URI = "mongodb://localhost:27017/ccai_backend"
+    SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    ADMINS = ['corneauf@mila.quebec']
-    API_KEYS_FILE = os.path.join(BASE_DIR, 'api_keys.yaml')
-    SV_PREFIX = 'gsv_{}.jpg'
-    ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'zip'])
+    ADMINS = ["mike@arpaia.co"]
+    API_KEYS_FILE = os.path.join(BASE_DIR, "api_keys.yaml")
+    SV_PREFIX = "gsv_{}.jpg"
+    ALLOWED_EXTENSIONS = set(["png", "jpg", "jpeg", "zip"])
 
-    API_KEYS_NAME = ['GEO_CODER_API_KEY', 'STREET_VIEW_API_KEY']
+    API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
+
+    # These variables are populated below
+    GEO_CODER_API_KEY = ""
+    STREET_VIEW_API_KEY = ""
 
 
 if os.path.exists(Config.API_KEYS_FILE):
-    with open(Config.API_KEYS_FILE, 'r') as f:
+    with open(Config.API_KEYS_FILE, "r") as f:
         keys = yaml.load(f)
 
         for key, value in keys.items():
             setattr(Config, key, value)
 else:
     for name in Config.API_KEYS_NAME:
-        print(name)
         key = os.environ.get(name, None)
 
         if key is None:
-            raise ValueError('No API key found for {}'.format(name))
+            raise ValueError("No API key found for {}".format(name))
 
         setattr(Config, name, key)

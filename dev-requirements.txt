@@ -1,8 +1,0 @@
-tox
-doc8
-flake8
-flake8-import-order
-flake8-docstrings
-flake8-bugbear
-pylint
-check-manifest
