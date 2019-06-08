@@ -3,16 +3,16 @@ CONTAINER_TAG = $(shell git rev-parse --verify HEAD)
 PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
 test:
-	python -m unittest discover ccai/tests
+	python -m unittest discover tests
 
 develop:
-	FLASK_APP=ccai/app/bin/webserver.py DEBUG=1 FLASK_DEBUG=1 python -m flask run
+	FLASK_APP=ccai/bin/webserver.py DEBUG=1 FLASK_DEBUG=1 python -m flask run
 
 format:
 	black .
 
 serve:
-	gunicorn -w $(shell sysctl -n hw.ncpu) -b 0.0.0.0:5000 ccai.app.bin.webserver:app
+	gunicorn -w $(shell sysctl -n hw.ncpu) -b 0.0.0.0:5000 ccai.bin.webserver:app
 
 container:
 	docker build \

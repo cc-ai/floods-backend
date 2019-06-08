@@ -18,7 +18,7 @@ git clone git@github.com:cc-ai/floods-backend.git
 From the root of the repository, run the following to install the application dependencies into your current Python environment:
 
 ```
-pip install -r ccai/requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Testing

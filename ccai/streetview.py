@@ -11,7 +11,7 @@ import google_streetview.api as sw_api
 import google_streetview.helpers as sw_helpers
 from googlegeocoder import GoogleGeocoder
 
-from ccai.app.config import Config
+from ccai.config import Config
 
 def fetch_street_view_image(address):
     """Retrieve StreetView images for the address."""

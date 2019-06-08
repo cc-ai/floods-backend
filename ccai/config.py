@@ -7,7 +7,7 @@ import os
 
 import yaml
 
-from ccai.app.singleton import Singleton
+from ccai.singleton import Singleton
 
 # pylint: disable=R0903
 class Config(Singleton):
@@ -15,7 +15,7 @@ class Config(Singleton):
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    API_KEYS_FILE = os.path.join(BASE_DIR, "../../api_keys.yaml")
+    API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
 
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
 

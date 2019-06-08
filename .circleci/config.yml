@@ -7,7 +7,7 @@ jobs:
     steps: &steps
       - checkout
       - run: apk add build-base
-      - run: pip install -r ccai/requirements.txt
+      - run: pip install -r requirements.txt
       - run: make test
 workflows:
   version: 2

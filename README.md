@@ -34,7 +34,7 @@ cd ~/git/floods-backend
 Install the Python dependencies into your current Python environment (should be at least Python 3.7):
 
 ```
-pip install -r ccai/requirements.txt
+pip install -r requirements.txt
 ```
 
 Run a development server:

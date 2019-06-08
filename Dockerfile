@@ -32,7 +32,7 @@ WORKDIR /floods-backend
 RUN pyenv virtualenv 3.7.3 floods-backend-3.7.3
 ENV PATH=/root/.pyenv/versions/3.7.3/envs/floods-backend-3.7.3/bin/:$PATH
 RUN pip install --upgrade pip
-RUN pip install -r ccai/requirements.txt
+RUN pip install -r requirements.txt
 
 # Setup the execution environment
 ENV WORKERS=4
