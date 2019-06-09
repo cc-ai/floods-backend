@@ -37,4 +37,4 @@ RUN pip install -r requirements.txt
 # Setup the execution environment
 ENV WORKERS=4
 EXPOSE 80
-CMD gunicorn -w $WORKERS -b 0.0.0.0:80 ccai.app.bin.webserver:app
+CMD gunicorn -w $WORKERS -b 0.0.0.0:80 ccai.bin.webserver:app
