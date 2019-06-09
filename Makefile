@@ -5,7 +5,9 @@ PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 test:
 	python -m unittest discover tests
 	mypy ccai
-	pylint ccai
+	pylint ccai/**
+	mypy tests
+	pylint tests/**
 
 develop:
 	FLASK_APP=ccai/bin/webserver.py DEBUG=1 FLASK_DEBUG=1 python -m flask run

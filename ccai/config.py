@@ -26,8 +26,8 @@ class ConfigSingleton(Singleton):
     def __init__(self) -> None:
         Singleton.__init__(self)
         if os.path.exists(self.API_KEYS_FILE):
-            with open(self.API_KEYS_FILE, "r") as f:
-                keys = yaml.load(f, Loader=yaml.FullLoader)  # type: ignore
+            with open(self.API_KEYS_FILE, "r") as api_keys_file:
+                keys = yaml.load(api_keys_file, Loader=yaml.FullLoader)  # type: ignore
 
                 for key, value in keys.items():
                     setattr(self, key, value)
@@ -41,4 +41,4 @@ class ConfigSingleton(Singleton):
                 setattr(self, key, value)
 
 
-Config = ConfigSingleton()
+CONFIG = ConfigSingleton()

@@ -11,12 +11,12 @@ import tempfile
 from flask import Flask, Response, jsonify, send_file
 import prometheus_client
 
-from ccai.config import Config
+from ccai.config import CONFIG
 from ccai.streetview import fetch_street_view_image
 
 DEBUG = os.environ.get("DEBUG", False)
 
-app = Flask(__name__)
+app = Flask(__name__) # pylint: disable=C0103
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
@@ -24,7 +24,10 @@ logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 @app.route("/address/<string:version>/<string:address>", methods=["GET"])
 def address2photo(version: str, address: str) -> Response:
     """Endpoint which converts an address into a photo of the future"""
-    images = fetch_street_view_image(address, Config.GEO_CODER_API_KEY, Config.STREET_VIEW_API_KEY)
+    # we don't use the version argument yet
+    _ = version
+
+    images = fetch_street_view_image(address, CONFIG.GEO_CODER_API_KEY, CONFIG.STREET_VIEW_API_KEY)
     with tempfile.TemporaryDirectory() as temp_dir:
         images.download_links(temp_dir)
         files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
