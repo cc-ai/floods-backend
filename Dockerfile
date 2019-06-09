@@ -26,12 +26,14 @@ RUN apt-get install \
 RUN pyenv install 3.7.3
 RUN git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
 
-# Copy the application code
-COPY . /floods-backend
-WORKDIR /floods-backend
+# Setup the pyenv
 RUN pyenv virtualenv 3.7.3 floods-backend-3.7.3
 ENV PATH=/root/.pyenv/versions/3.7.3/envs/floods-backend-3.7.3/bin/:$PATH
 RUN pip install --upgrade pip
+
+# Copy the application code
+COPY . /floods-backend
+WORKDIR /floods-backend
 RUN pip install -r requirements.txt
 
 # Setup the execution environment
