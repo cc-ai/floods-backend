@@ -5,6 +5,7 @@ A singleton implementation
 from typing import Any, Callable, Optional
 
 
+# pylint: disable=R0903
 class Singleton:
     """A simple singleton base class"""
 
