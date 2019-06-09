@@ -16,7 +16,7 @@ from ccai.streetview import fetch_street_view_image
 
 DEBUG = os.environ.get("DEBUG", False)
 
-app = Flask(__name__) # pylint: disable=C0103
+app = Flask(__name__)  # pylint: disable=C0103
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
