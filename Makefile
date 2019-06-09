@@ -1,4 +1,4 @@
-CONTAINER_NAME = ccai/floods-backend
+CONTAINER_NAME = gcr.io/mila-ccai/floods-backend
 CONTAINER_TAG = $(shell git rev-parse --verify HEAD)
 PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
@@ -19,5 +19,8 @@ serve:
 container:
 	docker build \
 		-f Dockerfile \
-		-t $(CONTAINER_NAME):${CONTAINER_TAG} \
+		-t $(CONTAINER_NAME):$(CONTAINER_TAG) \
 		.
+
+push-container:
+	docker push $(CONTAINER_NAME):$(CONTAINER_TAG)

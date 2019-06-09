@@ -54,11 +54,11 @@ make container
 Under the hood, this will run a `docker build` command with the appropriate container tag, environment variables, etc. If the command is successful, a container name will be printed out at the end. You might see something like:
 
 ```
-Step 19/19 : CMD gunicorn -w $WORKERS -b 0.0.0.0:80 ccai.app.bin.webserver:app
+Step 19/19 : CMD gunicorn -w $WORKERS -b 0.0.0.0:80 ccai.bin.webserver:app
  ---> Using cache
  ---> 5aac2c0f7c37
 Successfully built 5aac2c0f7c37
-Successfully tagged ccai/floods-backend:f2be8ff7ef4162e74ea848120aa7c20f90251249
+Successfully tagged gcr.io/mila-ccai/floods-backend:5ababa7899ff22e8be85e96c7ec03392b67b4d3a
 ```
 
 You can then take this container name (the part after "Successfully tagged") and run it as such:
@@ -67,7 +67,7 @@ You can then take this container name (the part after "Successfully tagged") and
 docker run \
   -e WORKERS=$(sysctl -n hw.ncpu) \
   -p 5000:80 \
-  ccai/floods-backend:f2be8ff7ef4162e74ea848120aa7c20f90251249
+  gcr.io/mila-ccai/floods-backend:5ababa7899ff22e8be85e96c7ec03392b67b4d3a
 ```
 
 As you can see here, you are also able to map port 80 in the container to port 5000 locally as well as specify the number of worker processes to use via the `WORKERS` environment variable.
