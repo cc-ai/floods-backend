@@ -27,7 +27,7 @@ class ConfigSingleton(Singleton):
         Singleton.__init__(self)
         if os.path.exists(self.API_KEYS_FILE):
             with open(self.API_KEYS_FILE, "r") as f:
-                keys = yaml.load(f, Loader=yaml.FullLoader) # type: ignore
+                keys = yaml.load(f, Loader=yaml.FullLoader)  # type: ignore
 
                 for key, value in keys.items():
                     setattr(self, key, value)
