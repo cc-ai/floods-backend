@@ -9,6 +9,7 @@ import os
 import tempfile
 
 from flask import Flask, Response, jsonify, send_file
+from flask_cors import CORS
 import prometheus_client
 
 from ccai.config import CONFIG
@@ -17,6 +18,7 @@ from ccai.streetview import fetch_street_view_image
 DEBUG = os.environ.get("DEBUG", False)
 
 app = Flask(__name__)  # pylint: disable=C0103
+CORS(app)
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
