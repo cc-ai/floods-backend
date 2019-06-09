@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: floods-backend
-        image: gcr.io/mila-ccai/floods-backend:ff8605bbdab5d19634c9ccd0372b270a891a8f99
+        image: gcr.io/mila-ccai/floods-backend:4f7c8067c83e01f8d5e4faf53d7b6402d958644c
         env:
         - name: WORKERS
           value: "1"
