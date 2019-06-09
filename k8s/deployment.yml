@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: floods-backend
+  namespace: ccai
+  labels:
+    app: floods-backend
+spec:
+  selector:
+    matchLabels:
+      app: floods-backend
+  template:
+    metadata:
+      labels:
+        app: floods-backend
+    spec:
+      containers:
+      - name: floods-backend
+        image: gcr.io/mila-ccai/floods-backend:ff8605bbdab5d19634c9ccd0372b270a891a8f99

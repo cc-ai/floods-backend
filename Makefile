@@ -24,3 +24,8 @@ container:
 
 push-container:
 	docker push $(CONTAINER_NAME):$(CONTAINER_TAG)
+
+deploy: container push-container
+	yq w -i k8s/deployment.yml spec.template.spec.containers[0].image $(CONTAINER_NAME):$(CONTAINER_TAG)
+	gcloud container clusters get-credentials floods-backend-cluster --zone us-west1-a --project mila-ccai
+	kubectl apply -f ./k8s/deployment.yml

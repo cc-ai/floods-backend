@@ -1,0 +1,19 @@
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: floods-backend-hpa
+  namespace: ccai
+  labels:
+    app: floods-backend
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: floods-backend
+    apiVersion: apps/v1beta1
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 80
