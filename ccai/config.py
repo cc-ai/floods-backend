@@ -10,7 +10,7 @@ import yaml
 from ccai.singleton import Singleton
 
 # pylint: disable=R0903
-class Config(Singleton):
+class ConfigSingleton(Singleton):
     """Configuration object for the `Flask` application."""
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
@@ -23,11 +23,11 @@ class Config(Singleton):
     GEO_CODER_API_KEY = ""
     STREET_VIEW_API_KEY = ""
 
-    def __init__(self):
+    def __init__(self) -> None:
         Singleton.__init__(self)
         if os.path.exists(self.API_KEYS_FILE):
             with open(self.API_KEYS_FILE, "r") as f:
-                keys = yaml.load(f, Loader=yaml.FullLoader)
+                keys = yaml.load(f, Loader=yaml.FullLoader) # type: ignore
 
                 for key, value in keys.items():
                     setattr(self, key, value)
@@ -41,7 +41,4 @@ class Config(Singleton):
                 setattr(self, key, value)
 
 
-# Redefine the "Config" symbol to be an instantiation of the above singleton.
-# This redefinition of the symbol allows API users who import this module to use
-# `Config.SECRET_KEY` instead of `Config().SECRET_KEY` to access attributes.
-Config = Config()
+Config = ConfigSingleton()
