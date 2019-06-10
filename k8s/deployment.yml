@@ -20,3 +20,18 @@ spec:
         env:
         - name: WORKERS
           value: "1"
+        - name: GEO_CODER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: geocoder-api-key
+              key: key
+        - name: STREET_VIEW_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: streetview-api-key
+              key: key
+        - name: GOOGLE_PLACE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: google-place-api-key
+              key: key
