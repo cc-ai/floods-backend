@@ -4,6 +4,7 @@ api_keys.yaml
 # Data directory
 .data/
 logs/
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
