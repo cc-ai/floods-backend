@@ -13,13 +13,12 @@ def fetch_street_view_image(
     """Retrieve StreetView images for the address."""
     geocoder = GoogleGeocoder(geocoder_api_key)
     result = geocoder.get(address)[0]
-    latitude = str(result.geometry.location.lat)
-    longitude = str(result.geometry.location.lng)
     params = {
         "size": "512x512",
-        "location": ",".join([latitude, longitude]),
+        "location": result.formatted_address,
         "pitch": "0",
         "key": streetview_api_key,
+        "source": "outdoor"
     }
     api_list = gsv_helpers.api_list(params)
     results = gsv_api.results(api_list)
