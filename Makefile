@@ -1,4 +1,4 @@
-CONTAINER_NAME = gcr.io/mila-ccai/floods-backend
+CONTAINER_NAME = gcr.io/climatechangeai/floods-backend
 CONTAINER_TAG = $(shell git rev-parse --verify HEAD)
 PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
@@ -36,7 +36,7 @@ container:
 
 gcloud-auth:
 	gcloud auth configure-docker
-	gcloud container clusters get-credentials floods-backend-cluster --zone us-west1-a --project mila-ccai
+	gcloud container clusters get-credentials floods-backend --zone us-east1-b --project climatechangeai
 
 push-container: gcloud-auth
 	docker push $(CONTAINER_NAME):$(CONTAINER_TAG)
