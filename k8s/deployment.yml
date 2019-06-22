@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: floods-backend
-        image: gcr.io/climatechangeai/floods-backend:c81b86e68a78edf86a6714a497953441262470de
+        image: gcr.io/climatechangeai/floods-backend:c6ed3e2b4972098b693b48dbdbe3e238a0dc605f
         env:
         - name: WORKERS
           value: "1"
