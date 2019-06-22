@@ -1,4 +1,6 @@
-CONTAINER_NAME = gcr.io/climatechangeai/floods-backend
+APP_CONTAINER_NAME = gcr.io/climatechangeai/floods-backend
+BASE_CONTAINER_NAME = gcr.io/climatechangeai/floods-backend-base
+CONTAINER_TAG = $(shell git rev-parse --verify HEAD)
 CONTAINER_TAG = $(shell git rev-parse --verify HEAD)
 PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
@@ -31,7 +33,13 @@ serve:
 container:
 	docker build \
 		-f Dockerfile \
-		-t $(CONTAINER_NAME):$(CONTAINER_TAG) \
+		-t $(APP_CONTAINER_NAME):$(CONTAINER_TAG) \
+		.
+
+base-container:
+	docker build \
+		-f base.Dockerfile \
+		-t $(BASE_CONTAINER_NAME):$(CONTAINER_TAG) \
 		.
 
 gcloud-auth:
@@ -39,10 +47,13 @@ gcloud-auth:
 	gcloud container clusters get-credentials floods-backend --zone us-east1-b --project climatechangeai
 
 push-container: gcloud-auth
-	docker push $(CONTAINER_NAME):$(CONTAINER_TAG)
+	docker push $(APP_CONTAINER_NAME):$(CONTAINER_TAG)
+
+push-base-container: gcloud-auth
+	docker push $(BASE_CONTAINER_NAME):$(CONTAINER_TAG)
 
 stage-deploy:
-	yq w -i k8s/deployment.yml spec.template.spec.containers[0].image $(CONTAINER_NAME):$(CONTAINER_TAG)
+	yq w -i k8s/deployment.yml spec.template.spec.containers[0].image $(APP_CONTAINER_NAME):$(CONTAINER_TAG)
 
 deploy: gcloud-auth container push-container stage-deploy
 	kubectl apply -f ./k8s/deployment.yml
