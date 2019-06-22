@@ -43,7 +43,7 @@ For a more production-ready server, run the following, which will use [`gunicorn
 make serve
 ```
 
-# Building The Container
+## Building The Container
 
 To build a container which can run the application server, use the following Make command:
 
