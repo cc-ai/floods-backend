@@ -17,7 +17,7 @@ There are also the following documents which may be useful depending on your obj
 
 ## How Does This Thing Work?
 
-This server is an API server written in [Python](https://python.org/) using the [Flask](http://flask.pocoo.org/) microframework. The server code is in [`ccai/app/`](./ccai/app/) and the tests are in [`ccai/test/`](./ccai/test/). For more information on running the server, see the [Contributor Guide](./CONTRIBUTING.md).
+This server is an API server written in [Python](https://python.org/) using the [Flask](http://flask.pocoo.org/) microframework. The server code is in [`ccai/`](./ccai/) and the tests are in [`tests/`](./tests/). For more information on running the server, see the [Contributor Guide](./CONTRIBUTING.md).
 
 ## Getting Started
 
