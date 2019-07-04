@@ -18,9 +18,6 @@ spec:
       - name: api-climatechangeai-org-tls
         secret:
           secretName: api-climatechangeai-org-tls
-          items:
-          - key: key
-          - key: cert
       containers:
       - name: floods-backend
         image: gcr.io/climatechangeai/floods-backend:c6ed3e2b4972098b693b48dbdbe3e238a0dc605f
