@@ -7,5 +7,10 @@ RUN pip install -r requirements.txt
 
 # Setup the execution environment
 ENV WORKERS=4
-EXPOSE 80
-CMD gunicorn -w $WORKERS -b 0.0.0.0:80 ccai.bin.webserver:app
+EXPOSE 443
+CMD gunicorn \
+  --certfile /api-climatechangeai-org-tls/tls.crt \
+  --keyfile /api-climatechangeai-org-tls/tls.key \
+  --workers $WORKERS \
+  --bind 0.0.0.0:443 \
+  ccai.bin.webserver:app
