@@ -7,9 +7,9 @@ metadata:
     app: floods-backend
 spec:
   ports:
-  - port: 80
+  - port: 443
     protocol: TCP
-    targetPort: 80
+    targetPort: 443
   selector:
     app: floods-backend
   type: LoadBalancer
