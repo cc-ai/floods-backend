@@ -1,5 +1,6 @@
 # API Keys
 api_keys.yaml
+.lego
 
 # Data directory
 .data/
