@@ -75,33 +75,12 @@ As you can see here, you are also able to map port 80 in the container to port 5
 
 ## TLS Certificates
 
-To generate TLS certificates for climatechangeai.org, we use [Let's Encrypt](https://letsencrypt.org/).
-
-To install the `lego` command-line tool, see the [installation guide](https://go-acme.github.io/lego/installation/). If you have a working Go installation, you can simply run:
-
-```
-go get -u github.com/go-acme/lego/cmd/lego
-```
-
-For example, to generate the certificate and key for https://api.climatechangeai.org, one might run the following:
-
-```
-export GCE_PROJECT="climatechangeai"
-export GCE_DOMAIN="climatechangeai"
-
-gcloud auth application-default login
-gcloud config set project climatechangeai
-
-lego --email="mike@arpaia.co" --domains="api.climatechangeai.org" --dns="gcloud" --accept-tos run
-```
-
-
-Now you can create the Kubernetes secret with the following command:
+First you must ask a member of the core team for the key and certificate files that are described here. Once you have them, create the Kubernetes secret with the following command:
 
 ```
 kubectl create secret tls api-climatechangeai-org-tls \
   --namespace ccai \
-  --key=./.lego/certificates/api.climatechangeai.org.key \
-  --cert=./.lego/certificates/api.climatechangeai.org.crt
+  --key=./api.climatechangeai.org.key \
+  --cert=./api.climatechangeai.org.crt
 ```
 
