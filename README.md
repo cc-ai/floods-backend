@@ -56,7 +56,7 @@ To download an image of an address, you can use the `/address/{version}/{address
 The version can be any string and the address should be a URL encoded address. To download a picture of Mila, you could run the following `curl` command locally:
 
 ```
-curl http://127.0.0.1:5000/address/cyclegan/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada > mila.jpg
+curl http://127.0.0.1:5000/address/munit/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada > mila.jpg
 open mila.jpg
 ```
 

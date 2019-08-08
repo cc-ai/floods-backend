@@ -22,22 +22,38 @@ CORS(app)
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
+VALID_VERSIONS = ["munit"]
+
 
 @app.route("/address/<string:version>/<string:address>", methods=["GET"])
 def address2photo(version: str, address: str) -> Response:
     """Endpoint which converts an address into a photo of the future"""
-    # we don't use the version argument yet
-    _ = version
+    if version not in VALID_VERSIONS:
+        response = jsonify({"error": "Invalid model version", "valid_versions": VALID_VERSIONS})
+        response.status_code = 400
+        return response
 
-    images = fetch_street_view_image(address, CONFIG.GEO_CODER_API_KEY, CONFIG.STREET_VIEW_API_KEY)
-    with tempfile.TemporaryDirectory() as temp_dir:
-        images.download_links(temp_dir)
-        files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
-        if "gsv_0.jpg" in files:
-            return send_file(os.path.join(temp_dir, "gsv_0.jpg"), as_attachment=True)
+    try:
+        images = fetch_street_view_image(
+            address, CONFIG.GEO_CODER_API_KEY, CONFIG.STREET_VIEW_API_KEY
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            images.download_links(temp_dir)
+            files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
+            if "gsv_0.jpg" in files:
+                return send_file(os.path.join(temp_dir, "gsv_0.jpg"), as_attachment=True)
+    except Exception as exception:  # pylint: disable=W0703
+        response = jsonify(
+            {
+                "error": "An error occurred fetching the Google Street View image",
+                "exception_text": str(exception),
+            }
+        )
+        response.status_code = 500
+        return response
 
     # in the happy path, this should be unreachable
-    response = jsonify({"error": "Server Error"})
+    response = jsonify({"error": "Internal Server Error"})
     response.status_code = 500
     return response
 

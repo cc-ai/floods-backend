@@ -18,7 +18,7 @@ def fetch_street_view_image(
         "location": result.formatted_address,
         "pitch": "0",
         "key": streetview_api_key,
-        "source": "outdoor"
+        "source": "outdoor",
     }
     api_list = gsv_helpers.api_list(params)
     results = gsv_api.results(api_list)
