@@ -28,7 +28,7 @@ VALID_VERSIONS = ["munit"]
 @app.route("/address/<string:version>/<string:address>", methods=["GET"])
 def address2photo(version: str, address: str) -> Response:
     """Endpoint which converts an address into a photo of the future"""
-    if version not in VALID_VERSIONS:
+    if version.lower() not in VALID_VERSIONS:
         response = jsonify({"error": "Invalid model version", "valid_versions": VALID_VERSIONS})
         response.status_code = 400
         return response
