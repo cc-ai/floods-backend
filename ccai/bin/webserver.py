@@ -37,11 +37,6 @@ def address2photo(version: str, address: str) -> Response:
         images = fetch_street_view_image(
             address, CONFIG.GEO_CODER_API_KEY, CONFIG.STREET_VIEW_API_KEY
         )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            images.download_links(temp_dir)
-            files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
-            if "gsv_0.jpg" in files:
-                return send_file(os.path.join(temp_dir, "gsv_0.jpg"), as_attachment=True)
     except Exception as exception:  # pylint: disable=W0703
         response = jsonify(
             {
@@ -51,6 +46,16 @@ def address2photo(version: str, address: str) -> Response:
         )
         response.status_code = 500
         return response
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        images.download_links(temp_dir)
+        files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
+        if "gsv_0.jpg" in files:
+            return send_file(os.path.join(temp_dir, "gsv_0.jpg"), as_attachment=True)
+        else:
+            response = jsonify({"error": "Image not found in response from Google Street View"})
+            response.status_code = 500
+            return response
 
     # in the happy path, this should be unreachable
     response = jsonify({"error": "Internal Server Error"})
