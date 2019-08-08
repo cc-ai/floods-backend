@@ -20,7 +20,7 @@ spec:
           secretName: api-climatechangeai-org-tls
       containers:
       - name: floods-backend
-        image: gcr.io/climatechangeai/floods-backend:47042d92f674bde3480b697f3f9dea9bfa7e15ba
+        image: gcr.io/climatechangeai/floods-backend:c8f01771876c2a15f3c99ab214fa589d072e01bc
         volumeMounts:
         - name: api-climatechangeai-org-tls
           mountPath: /api-climatechangeai-org-tls
@@ -37,9 +37,4 @@ spec:
           valueFrom:
             secretKeyRef:
               name: streetview-api-key
-              key: key
-        - name: GOOGLE_PLACE_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: google-place-api-key
               key: key
