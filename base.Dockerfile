@@ -26,6 +26,10 @@ RUN apt-get install \
 RUN pyenv install 3.7.3
 RUN git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
 
+# Install Git LFS
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+RUN apt-get install git-lfs
+
 # Setup the pyenv
 RUN pyenv virtualenv 3.7.3 floods-backend-3.7.3
 ENV PATH=/root/.pyenv/versions/3.7.3/envs/floods-backend-3.7.3/bin/:$PATH
