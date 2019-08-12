@@ -16,6 +16,7 @@ class ConfigSingleton(Singleton):
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
+    MUNIT_CONFIG_FILE = os.path.join(BASE_DIR, "nn/munit/config.yaml")
 
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
 
@@ -39,6 +40,9 @@ class ConfigSingleton(Singleton):
                     value = ""
 
                 setattr(self, key, value)
+
+        with open(self.MUNIT_CONFIG_FILE, "r") as munit_config_file:
+            self.munit_config = yaml.load(munit_config_file, Loader=yaml.FullLoader)  # type: ignore
 
 
 CONFIG = ConfigSingleton()
