@@ -1,4 +1,5 @@
 [MASTER]
+ignore=ccai/nn/munit
 disable=bad-continuation
 init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))"
 jobs=4
@@ -15,3 +16,8 @@ max-nested-blocks=4
 ignore-long-lines=^\s*(# )?<?https?://\S+>?$
 max-line-length=100
 max-module-lines=750
+
+[TYPECHECK]
+ignored-modules=numpy,torch,ahocorasick,cv2
+ignored-classes=numpy,torch
+generated-members=numpy.*,torch.*
