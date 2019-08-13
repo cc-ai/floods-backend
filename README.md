@@ -73,7 +73,8 @@ This will return a response like:
     "original": "...",
     "flooded": "...",
     "metadata": {
-        "foo": "bar"
+        "monthly_average_precipitation": 9.5253,
+        "relative_change_precipitation": 0.13491
     }
 }
 ```

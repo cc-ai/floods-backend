@@ -21,6 +21,7 @@ RUN apt-get install \
     libssl-dev \
     libsqlite3-dev \
     libreadline-dev \
+    liblzma-dev \
     zlib1g-dev \
     -y
 RUN pyenv install 3.7.3
