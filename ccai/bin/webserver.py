@@ -19,6 +19,7 @@ import torch
 import torchvision.utils as vutils
 from torchvision import transforms
 
+from ccai.climate.extractor import Extractor
 from ccai.config import CONFIG
 from ccai.nn.munit.trainer import MUNIT_Trainer
 from ccai.streetview import fetch_street_view_image
@@ -156,11 +157,17 @@ def flood(model: str, address: str) -> Response:
                 flooded_image_data = flooded_image_handle.read()
             flooded_image_encoded = base64.b64encode(flooded_image_data)
 
+            extractor = Extractor()
+            coords = extractor.coordinates_from_address(address)
+
             return jsonify(
                 {
                     "original": gsv_image_encoded.decode("ascii"),
                     "flooded": flooded_image_encoded.decode("ascii"),
-                    "metadata": {},
+                    "metadata": {
+                        "relative_precipitation_change": extractor.relative_change(coords),
+                        "monthly_average_precipitation": extractor.monthly_average_precip(coords),
+                    },
                 }
             )
 
