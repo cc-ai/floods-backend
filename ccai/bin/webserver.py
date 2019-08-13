@@ -165,8 +165,14 @@ def flood(model: str, address: str) -> Response:
                     "original": gsv_image_encoded.decode("ascii"),
                     "flooded": flooded_image_encoded.decode("ascii"),
                     "metadata": {
-                        "relative_change_precipitation": climate_metadata.relative_change_precip,
-                        "monthly_average_precipitation": climate_metadata.monthly_average_precip,
+                        "relative_change_precipitation": {
+                            "title": "Relative Change in Precipitation by 2050",
+                            "value": climate_metadata.relative_change_precip,
+                        },
+                        "monthly_average_precipitation": {
+                            "title": "Monthly Average Precipitation in 2050",
+                            "value": climate_metadata.monthly_average_precip,
+                        },
                     },
                 }
             )

@@ -73,8 +73,14 @@ This will return a response like:
     "original": "...",
     "flooded": "...",
     "metadata": {
-        "monthly_average_precipitation": 9.5253,
-        "relative_change_precipitation": 0.13491
+        "monthly_average_precipitation": {
+            "title": "Monthly Average Precipitation in 2050",
+            "value": 9.5253
+        },
+        "relative_change_precipitation": {
+            "title": "Relative Change in Precipitation by 2050",
+            "value": 0.13491
+        }
     }
 }
 ```
