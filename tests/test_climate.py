@@ -7,6 +7,7 @@ import unittest
 from ccai.climate.extractor import Extractor
 
 
+@unittest.skip("skipping to minimize LFS bandwidth")
 class TestClimate(unittest.TestCase):
     """Tests for the climate data logic"""
 
