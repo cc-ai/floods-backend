@@ -20,7 +20,7 @@ spec:
           secretName: api-climatechangeai-org-tls
       containers:
       - name: floods-backend
-        image: gcr.io/climatechangeai/floods-backend:dd685a946a3c34b3c1dc59c1e0106e77ade453e9
+        image: gcr.io/climatechangeai/floods-backend:b7545d3c85a509e696ead7cbadcfc65974f7ff25
         volumeMounts:
         - name: api-climatechangeai-org-tls
           mountPath: /api-climatechangeai-org-tls
