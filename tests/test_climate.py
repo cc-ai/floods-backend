@@ -20,14 +20,11 @@ class TestClimate(unittest.TestCase):
         self.assertEqual(int(self.mila_coordinates.lat), 45)
         self.assertEqual(int(self.mila_coordinates.lon), -73)
 
-    def test_relative_change(self) -> None:
-        """Test calculation of relative precipitation change"""
-        self.assertEqual(self.extractor.relative_change(self.mila_coordinates), 0.13491)
-
-    def test_monthly_average_precip(self) -> None:
-        """Test calculation of monthly average precipitation"""
-        self.assertEqual(self.extractor.monthly_average_precip(self.mila_coordinates), 9.5253)
-
+    def test_metadata(self) -> None:
+        """Test calculation of climate metadata"""
+        meta = self.extractor.metadata_for_address(self.mila_address)
+        self.assertEqual(meta.relative_change_precip, 0.13491)
+        self.assertEqual(meta.monthly_average_precip, 9.5253)
 
 
 if __name__ == "__main__":

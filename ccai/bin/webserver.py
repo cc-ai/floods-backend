@@ -158,15 +158,15 @@ def flood(model: str, address: str) -> Response:
             flooded_image_encoded = base64.b64encode(flooded_image_data)
 
             extractor = Extractor()
-            coords = extractor.coordinates_from_address(address)
+            climate_metadata = extractor.metadata_for_address(address)
 
             return jsonify(
                 {
                     "original": gsv_image_encoded.decode("ascii"),
                     "flooded": flooded_image_encoded.decode("ascii"),
                     "metadata": {
-                        "relative_precipitation_change": extractor.relative_change(coords),
-                        "monthly_average_precipitation": extractor.monthly_average_precip(coords),
+                        "relative_change_precipitation": climate_metadata.relative_change_precip,
+                        "monthly_average_precipitation": climate_metadata.monthly_average_precip,
                     },
                 }
             )

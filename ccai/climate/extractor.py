@@ -19,6 +19,14 @@ class Coordinates:
     lon: float
 
 
+@dataclass
+class ClimateMetadata:
+    """Data class for passing around climate metadata"""
+
+    relative_change_precip: float
+    monthly_average_precip: float
+
+
 class Extractor(Singleton):
     """Class for extracting relevant climate data given an address or lat/long"""
 
@@ -51,26 +59,23 @@ class Extractor(Singleton):
 
         lat_idx = 1
         for idx, value in self.lat.iterrows():
-            if value["lat"] < lat:
+            if float(value["lat"]) < lat:
                 break
             lat_idx = idx + 1
 
         lon_idx = 1
         for idx, value in self.lon.iterrows():
-            if value["lon"] > lon:
+            if float(value["lon"]) > lon:
                 break
             lon_idx = idx + 1
 
         return (lat_idx, lon_idx)
 
-    def relative_change(self, coordinates: Coordinates) -> float:
-        """Calculate the relative change in precip in 2050 for a given set of
-        coordinates"""
-        indexes = self.indexes_for_coordinates(coordinates)
-        return self.relative_compared_to_2012.iloc[indexes[0], indexes[1]]
-
-    def monthly_average_precip(self, coordinates: Coordinates) -> float:
-        """Calculate the monthly average precipitation in 2050 for a given set
-        of coordinates"""
-        indexes = self.indexes_for_coordinates(coordinates)
-        return self.year_ave.iloc[indexes[0], indexes[1]]
+    def metadata_for_address(self, address: str) -> ClimateMetadata:
+        """Calculate climate metadata for a given address"""
+        coords = self.coordinates_from_address(address)
+        indexes = self.indexes_for_coordinates(coords)
+        return ClimateMetadata(
+            relative_change_precip=self.relative_compared_to_2012.iloc[indexes[0], indexes[1]],
+            monthly_average_precip=self.year_ave.iloc[indexes[0], indexes[1]],
+        )
