@@ -51,14 +51,34 @@ Once you're running the webserver locally, there are a few API endpoints that ar
 
 ### Fetching An Image For An Address
 
-To download an image of an address, you can use the `/address/{version}/{address}` endpoint. Note that this endpoint is currently under development, but it will return a real image of the address!
-
-The version can be any string and the address should be a URL encoded address. To download a picture of Mila, you could run the following `curl` command locally:
+To download an image of an address, you can use the `/address/{address}` endpoint. To download a picture of Mila, you could run the following `curl` command locally:
 
 ```
-curl http://127.0.0.1:5000/address/munit/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada > mila.jpg
+curl http://127.0.0.1:5000/address/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada > mila.jpg
 open mila.jpg
 ```
+
+### Fetching A Flooded Image and Metadata For An Address
+
+To download an unprocessed image as well as a flooded image and metadata, you can use the `/flood/{model}/{address}` endpoint. The model string must be a valid model that we have configured to flood images. At the time of this writing, the only supported model is `munit`. To download the content for Mila, you could run the following curl command locally:
+
+```
+curl localhost:5000/flood/MUNIT/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada > images.json
+```
+
+This will return a response like:
+
+```json
+{
+    "original": "...",
+    "flooded": "...",
+    "metadata": {
+        "foo": "bar"
+    }
+}
+```
+
+Note that the `"metadata"` key may return arbitrary climate-related metadata about the image. The `"original"` and `"flooded"` keys will contain base64 encoded images.
 
 ### Prometheus Metrics
 
