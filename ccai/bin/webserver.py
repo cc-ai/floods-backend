@@ -191,5 +191,11 @@ def metrics() -> Response:
     )
 
 
+@app.route("/healthcheck", methods=["GET"])
+def healthcheck() -> Response:
+    """Healthcheck endpoint"""
+    return Response("ok", mimetype="text/plain")
+
+
 if __name__ == "__main__":
     app.run(debug=bool(DEBUG))
