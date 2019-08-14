@@ -21,8 +21,9 @@ from torchvision import transforms
 
 from ccai.climate.extractor import Extractor
 from ccai.config import CONFIG
+from ccai.image_processing.watermark import apply_watermark
+from ccai.image_processing.streetview import fetch_street_view_image
 from ccai.nn.munit.trainer import MUNIT_Trainer
-from ccai.streetview import fetch_street_view_image
 
 # Global environment-based configuration
 DEBUG = os.environ.get("DEBUG", False)
@@ -42,7 +43,7 @@ else:
     logging.warning("CUDA is not available")
 
 # MUNIT Hyperparameters and Model
-NEW_SIZE = CONFIG.munit_config["new_size"]
+MUNIT_NEW_SIZE = CONFIG.munit_config["new_size"]
 MUNIT_MODEL = MUNIT_Trainer(CONFIG.munit_config)
 if torch.cuda.is_available():
     MUNIT_STATE_DICT = torch.load(CONFIG.MUNIT_CHECKPOINT_FILE)
@@ -85,7 +86,11 @@ def address_to_photo(address: str) -> Response:
             response = jsonify({"error": "Image not found in response from Google Street View"})
             response.status_code = 500
             return response
-        return send_file(os.path.join(temp_dir, "gsv_0.jpg"), as_attachment=True)
+
+        gsv_image_path = os.path.join(temp_dir, "gsv_0.jpg")
+        watermarked_image_path = os.path.join(temp_dir, "gsv_watermarked.jpg")
+        apply_watermark(gsv_image_path, watermarked_image_path)
+        return send_file(watermarked_image_path, as_attachment=True)
 
     # in the happy path, this should be unreachable
     response = jsonify({"error": "Internal Server Error"})
@@ -125,7 +130,7 @@ def flood(model: str, address: str) -> Response:
         with torch.no_grad():
             transform = transforms.Compose(
                 [
-                    transforms.Resize(NEW_SIZE),
+                    transforms.Resize(MUNIT_NEW_SIZE),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                 ]
@@ -153,11 +158,17 @@ def flood(model: str, address: str) -> Response:
             path_to_flooded_image = os.path.join(temp_dir, "output" + "{:03d}.jpg".format(0))
             vutils.save_image(outputs.data, path_to_flooded_image, padding=0, normalize=True)
 
-            with open(path_to_gsv_image, "rb") as gsv_image_handle:
+            path_to_gsv_image_watermarked = os.path.join(temp_dir, "gsv_watermarked.jpg")
+            apply_watermark(path_to_gsv_image, path_to_gsv_image_watermarked)
+
+            path_to_flooded_image_watermarked = os.path.join(temp_dir, "flooded_watermarked.jpg")
+            apply_watermark(path_to_flooded_image, path_to_flooded_image_watermarked)
+
+            with open(path_to_gsv_image_watermarked, "rb") as gsv_image_handle:
                 gsv_image_data = gsv_image_handle.read()
             gsv_image_encoded = base64.b64encode(gsv_image_data)
 
-            with open(path_to_flooded_image, "rb") as flooded_image_handle:
+            with open(path_to_flooded_image_watermarked, "rb") as flooded_image_handle:
                 flooded_image_data = flooded_image_handle.read()
             flooded_image_encoded = base64.b64encode(flooded_image_data)
 
