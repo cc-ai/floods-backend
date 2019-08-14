@@ -18,13 +18,25 @@ spec:
       labels:
         app: floods-backend
     spec:
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-accelerator
+                operator: In
+                values:
+                - nvidia-tesla-p100
       volumes:
       - name: api-climatechangeai-org-tls
         secret:
           secretName: api-climatechangeai-org-tls
       containers:
       - name: floods-backend
-        image: gcr.io/climatechangeai/floods-backend:44683bc0413ce676f1793cf5cd5a51c44255d9c7
+        image: gcr.io/climatechangeai/floods-backend:b0c9b57e7ee2d10ab852c408135014ae264eb70a
         resources:
           requests:
             memory: 512Mi
