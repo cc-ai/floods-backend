@@ -36,6 +36,10 @@ CORS(app)
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
+if torch.cuda.is_available():
+    logging.info("CUDA is available")
+else:
+    logging.warning("CUDA is not available")
 
 # MUNIT Hyperparameters and Model
 NEW_SIZE = CONFIG.munit_config["new_size"]
