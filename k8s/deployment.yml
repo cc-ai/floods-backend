@@ -9,7 +9,7 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-       maxUnavailable: 25%
+      maxUnavailable: 25%
   selector:
     matchLabels:
       app: floods-backend
@@ -36,7 +36,7 @@ spec:
           secretName: api-climatechangeai-org-tls
       containers:
       - name: floods-backend
-        image: gcr.io/climatechangeai/floods-backend:b0c9b57e7ee2d10ab852c408135014ae264eb70a
+        image: gcr.io/climatechangeai/floods-backend:b1cb0e4c601bc85182f149d79b5e428b04554220
         resources:
           requests:
             memory: 512Mi
