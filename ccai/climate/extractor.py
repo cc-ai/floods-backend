@@ -76,11 +76,15 @@ class Extractor(Singleton):
         """Calculate climate metadata for a given address"""
         coords = self.coordinates_from_address(address)
         indexes = self.indexes_for_coordinates(coords)
-        relative_change_precip = self.relative_compared_to_2012.iloc[indexes[0], indexes[1]]
-        if relative_change_precip == 0.0:
+        try:
+            relative_change_precip = self.relative_compared_to_2012.iloc[indexes[0], indexes[1]]
+            if relative_change_precip == 0.0:
+                relative_change_precip = None
+            monthly_average_precip = self.year_ave.iloc[indexes[0], indexes[1]]
+            if np.isnan(monthly_average_precip):
+                monthly_average_precip = None
+        except IndexError:
             relative_change_precip = None
-        monthly_average_precip = self.year_ave.iloc[indexes[0], indexes[1]]
-        if np.isnan(monthly_average_precip):
             monthly_average_precip = None
         return ClimateMetadata(
             relative_change_precip=relative_change_precip,

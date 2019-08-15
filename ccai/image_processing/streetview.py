@@ -16,8 +16,7 @@ def fetch_street_view_image(
     params = {
         "size": "256x256",
         "location": result.formatted_address,
-        "pitch": "10",
-        "radius": "1000",
+        "pitch": "0",
         "key": streetview_api_key,
         "source": "outdoor",
         "fov": "120",
