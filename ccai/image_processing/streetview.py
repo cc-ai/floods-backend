@@ -14,7 +14,7 @@ def fetch_street_view_image(
     geocoder = GoogleGeocoder(geocoder_api_key)
     result = geocoder.get(address)[0]
     params = {
-        "size": "256x256",
+        "size": "600x600",
         "location": result.formatted_address,
         "pitch": "0",
         "key": streetview_api_key,
