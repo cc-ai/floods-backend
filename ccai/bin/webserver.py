@@ -5,6 +5,7 @@ A web service for indexing and retrieving documents
 """
 
 # pylint: disable=R0914
+# pylint: disable=R0915
 
 import base64
 import logging
