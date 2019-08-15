@@ -140,7 +140,10 @@ def flood(model: str, address: str) -> Response:
         extractor = Extractor()
         climate_metadata = extractor.metadata_for_address(address)
 
-        if climate_metadata.relative_change_precip >= 0.6:
+        if (
+            climate_metadata.relative_change_precip is not None
+            and climate_metadata.relative_change_precip >= 0.6
+        ):
             with torch.no_grad():
                 transform = transforms.Compose(
                     [
