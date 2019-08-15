@@ -5,6 +5,7 @@ A web service for indexing and retrieving documents
 """
 
 # pylint: disable=R0914
+# pylint: disable=R0915
 
 import base64
 import logging
@@ -127,70 +128,80 @@ def flood(model: str, address: str) -> Response:
             response = jsonify({"error": "Image not found in response from Google Street View"})
             response.status_code = 200
             return response
-        with torch.no_grad():
-            transform = transforms.Compose(
-                [
-                    transforms.Resize(MUNIT_NEW_SIZE),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                ]
-            )
 
-            # path to streetview image
-            path_to_gsv_image = os.path.join(temp_dir, "gsv_0.jpg")
+        path_to_gsv_image = os.path.join(temp_dir, "gsv_0.jpg")
+        path_to_gsv_image_watermarked = os.path.join(temp_dir, "gsv_watermarked.jpg")
+        apply_watermark(path_to_gsv_image, path_to_gsv_image_watermarked)
+        with open(path_to_gsv_image_watermarked, "rb") as gsv_image_handle:
+            gsv_image_data = gsv_image_handle.read()
+        gsv_image_encoded = base64.b64encode(gsv_image_data)
+        gsv_image_response = gsv_image_encoded.decode("ascii")
 
-            image_transformed = transform(Image.open(path_to_gsv_image).convert("RGB")).unsqueeze(0)
-            if torch.cuda.is_available():
-                image_transformed = image_transformed.cuda()
-            x_a = torch.Tensor(image_transformed)
-            c_xa_b, _ = MUNIT_MODEL.gen.encode(x_a, 1)
+        extractor = Extractor()
+        climate_metadata = extractor.metadata_for_address(address)
 
-            # Initiate parameters
-            content = c_xa_b
-            style_data = torch.mul(torch.randn(1, 16, 1, 1), 0.5)
-            if torch.cuda.is_available():
-                style_data = style_data.cuda()
-            style = torch.Tensor(style_data)
+        if climate_metadata.relative_change_precip >= 0.6:
+            with torch.no_grad():
+                transform = transforms.Compose(
+                    [
+                        transforms.Resize(MUNIT_NEW_SIZE),
+                        transforms.ToTensor(),
+                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                    ]
+                )
 
-            outputs = MUNIT_MODEL.gen.decode(content, style, 2)
-            outputs = (outputs + 1) / 2.0
+                image_transformed = transform(
+                    Image.open(path_to_gsv_image).convert("RGB")
+                ).unsqueeze(0)
+                if torch.cuda.is_available():
+                    image_transformed = image_transformed.cuda()
+                x_a = torch.Tensor(image_transformed)
+                c_xa_b, _ = MUNIT_MODEL.gen.encode(x_a, 1)
 
-            path_to_flooded_image = os.path.join(temp_dir, "output" + "{:03d}.jpg".format(0))
-            vutils.save_image(outputs.data, path_to_flooded_image, padding=0, normalize=True)
+                # Initiate parameters
+                content = c_xa_b
+                style_data = torch.mul(torch.randn(1, 16, 1, 1), 0.5)
+                if torch.cuda.is_available():
+                    style_data = style_data.cuda()
+                style = torch.Tensor(style_data)
 
-            path_to_gsv_image_watermarked = os.path.join(temp_dir, "gsv_watermarked.jpg")
-            apply_watermark(path_to_gsv_image, path_to_gsv_image_watermarked)
+                outputs = MUNIT_MODEL.gen.decode(content, style, 2)
+                outputs = (outputs + 1) / 2.0
 
-            path_to_flooded_image_watermarked = os.path.join(temp_dir, "flooded_watermarked.jpg")
-            apply_watermark(path_to_flooded_image, path_to_flooded_image_watermarked)
+                path_to_flooded_image = os.path.join(temp_dir, "output" + "{:03d}.jpg".format(0))
+                vutils.save_image(outputs.data, path_to_flooded_image, padding=0, normalize=True)
 
-            with open(path_to_gsv_image_watermarked, "rb") as gsv_image_handle:
-                gsv_image_data = gsv_image_handle.read()
-            gsv_image_encoded = base64.b64encode(gsv_image_data)
+                path_to_flooded_image_watermarked = os.path.join(
+                    temp_dir, "flooded_watermarked.jpg"
+                )
+                apply_watermark(path_to_flooded_image, path_to_flooded_image_watermarked)
 
-            with open(path_to_flooded_image_watermarked, "rb") as flooded_image_handle:
-                flooded_image_data = flooded_image_handle.read()
-            flooded_image_encoded = base64.b64encode(flooded_image_data)
+                with open(path_to_flooded_image_watermarked, "rb") as flooded_image_handle:
+                    flooded_image_data = flooded_image_handle.read()
+                flooded_image_encoded = base64.b64encode(flooded_image_data)
+                flooded_image_response = flooded_image_encoded.decode("ascii")
+        else:
+            flooded_image_response = None
 
-            extractor = Extractor()
-            climate_metadata = extractor.metadata_for_address(address)
+        response = {
+            "original": gsv_image_response,
+            "flooded": flooded_image_response,
+            "metadata": {
+                "relative_change_precipitation": {
+                    "title": "Relative Change in Precipitation by 2050 (in CM)",
+                    "value": climate_metadata.relative_change_precip,
+                },
+                "monthly_average_precipitation": {
+                    "title": "Monthly Average Precipitation in 2050 (in CM)",
+                    "value": climate_metadata.monthly_average_precip,
+                },
+            },
+        }
 
-            return jsonify(
-                {
-                    "original": gsv_image_encoded.decode("ascii"),
-                    "flooded": flooded_image_encoded.decode("ascii"),
-                    "metadata": {
-                        "relative_change_precipitation": {
-                            "title": "Relative Change in Precipitation by 2050",
-                            "value": climate_metadata.relative_change_precip,
-                        },
-                        "monthly_average_precipitation": {
-                            "title": "Monthly Average Precipitation in 2050",
-                            "value": climate_metadata.monthly_average_precip,
-                        },
-                    },
-                }
-            )
+        if flooded_image_response is None:
+            response["warning"] = "Low risk of flooding, therefore no visualization available"
+
+        return jsonify(response)
 
     # in the happy path, this should be unreachable
     response = jsonify({"error": "Internal Server Error"})
