@@ -125,7 +125,7 @@ def flood(model: str, address: str) -> Response:
         files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
         if "gsv_0.jpg" not in files:
             response = jsonify({"error": "Image not found in response from Google Street View"})
-            response.status_code = 500
+            response.status_code = 200
             return response
         with torch.no_grad():
             transform = transforms.Compose(
