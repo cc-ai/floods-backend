@@ -36,7 +36,7 @@ spec:
           secretName: api-climatechangeai-org-tls
       containers:
       - name: floods-backend
-        image: gcr.io/climatechangeai/floods-backend:b19673a04bf84aaedffc7e316b119c2236cb5b87
+        image: gcr.io/climatechangeai/floods-backend:gpu-bb160c826ad456f50665966355539fd411d7ee97
         resources:
           requests:
             memory: 512Mi
