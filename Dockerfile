@@ -1,4 +1,4 @@
-FROM gcr.io/climatechangeai/floods-backend-base:b58d1f23c842b73077061a3b02b8cc7d58ab662
+FROM gcr.io/climatechangeai/floods-backend-base:640d5bf4f165ae0e41174aea145cf530dddf5036
 
 # Copy the application code
 COPY . /floods-backend
