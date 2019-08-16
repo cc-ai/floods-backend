@@ -15,7 +15,7 @@ import requests
 def main():
     """Application entrypoint"""
     response = requests.get(
-        "http://localhost:5000/flood/munit/6666%20St%20Urbain%20St%2C%20Montreal%2C%20QC%20H2S%203H1%2C%20Canada"
+        "http://localhost:5000/flood/munit/406%20Rue%20Principale%2C%20Cowansville%2C%20QC%2C%20Canada%0A"
     )
 
     with open("original.jpg", "wb") as file_handle:
