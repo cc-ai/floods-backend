@@ -18,6 +18,7 @@ class ConfigSingleton(Singleton):
     API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
     MUNIT_CONFIG_FILE = os.path.join(BASE_DIR, "nn/munit/config.yaml")
     MUNIT_CHECKPOINT_FILE = os.path.join(BASE_DIR, "nn/munit/checkpoints/gen_00125000.pt")
+    MUNIT_STYLE_FILE = os.path.join(BASE_DIR, "nn/munit/styles/style_high_res.npy")
 
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
 

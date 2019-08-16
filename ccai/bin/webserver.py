@@ -6,6 +6,7 @@ A web service for indexing and retrieving documents
 
 # pylint: disable=R0914
 # pylint: disable=R0915
+# pylint: disable=E1102
 
 import base64
 import logging
@@ -14,6 +15,7 @@ import tempfile
 
 from flask import Flask, Response, jsonify, send_file
 from flask_cors import CORS
+import numpy as np
 from PIL import Image
 import prometheus_client
 import torch
@@ -163,10 +165,10 @@ def flood(model: str, address: str) -> Response:
 
                 # Initiate parameters
                 content = c_xa_b
-                style_data = torch.mul(torch.randn(1, 16, 1, 1), 0.5)
+                style_data = np.load(CONFIG.MUNIT_STYLE_FILE)
+                style = torch.tensor(style_data.reshape(1, 16, 1, 1), dtype=torch.float)
                 if torch.cuda.is_available():
-                    style_data = style_data.cuda()
-                style = torch.Tensor(style_data)
+                    style = style.cuda()
 
                 outputs = MUNIT_MODEL.gen.decode(content, style, 2)
                 outputs = (outputs + 1) / 2.0
