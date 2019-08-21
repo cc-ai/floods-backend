@@ -15,7 +15,7 @@ def apply_watermark(input_image_path: str, output_image_path: str) -> None:
     photo = Image.open(input_image_path)
     drawing = ImageDraw.Draw(photo)
     font_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "helvetica.ttf")
-    font = ImageFont.truetype(font_file, 20)
+    font = ImageFont.truetype(font_file, 48)
     pos = (0, 0)
     drawing.text(pos, WATERMARK_TEXT, fill=ImageColor.getrgb("red"), font=font)
     photo.save(output_image_path)
