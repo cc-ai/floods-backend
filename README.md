@@ -31,6 +31,14 @@ git clone https://github.com/cc-ai/floods-backend ~/git/floods-backend
 cd ~/git/floods-backend
 ```
 
+Install the large files (models) using [Git  LFS](https://git-lfs.github.com/):
+
+```
+git lfs init
+git lfs pull
+git lfs checkout
+```
+
 Install the Python dependencies into your current Python environment (should be at least Python 3.7):
 
 ```
