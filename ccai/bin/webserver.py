@@ -160,7 +160,7 @@ def flood(model: str, address: str) -> Response:
                 ).unsqueeze(0)
                 if torch.cuda.is_available():
                     image_transformed = image_transformed.cuda()
-                x_a = torch.Tensor(image_transformed)
+                x_a = image_transformed
                 c_xa_b, _ = MUNIT_MODEL.gen.encode(x_a, 1)
 
                 # Initiate parameters
