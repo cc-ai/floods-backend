@@ -16,14 +16,6 @@ First, clone the repo:
 git clone git@github.com:cc-ai/floods-backend.git
 ```
 
-Install the large files (models) using [Git  LFS](https://git-lfs.github.com/):
-
-```
-git lfs init
-git lfs pull
-git lfs checkout
-```
-
 From the root of the repository, run the following to install the application dependencies into your current Python environment:
 
 ```

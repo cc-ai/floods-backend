@@ -4,229 +4,75 @@
 A web service for indexing and retrieving documents
 """
 
-# pylint: disable=R0914
-# pylint: disable=R0915
-# pylint: disable=E1102
-
-import base64
-import logging
-import os
-import tempfile
-
+import os, tempfile, torch
 from flask import Flask, Response, jsonify, send_file
 from flask_cors import CORS
-import numpy as np
-from PIL import Image
-import prometheus_client
-import torch
-import torchvision.utils as vutils
-from torchvision import transforms
 
-from ccai.climate.extractor import Extractor
+from ccai.image_processing.process_image import create_temp_dir, fetch_image, encode_image, decode_image
+from ccai.climate.process_climate import fetch_climate_data
+from ccai.nn.process_model import cuda_check, model_validation, model_launch
+from ccai.config import FLOOD_MODEL, ROUTE_MODEL
 from ccai.config import CONFIG
-from ccai.image_processing.watermark import apply_watermark
-from ccai.image_processing.streetview import fetch_street_view_image
-from ccai.nn.munit.trainer import MUNIT_Trainer
+from ccai.nn.spade.segmentation import Resnet34_8s
 
-# Global environment-based configuration
-DEBUG = os.environ.get("DEBUG", False)
+# MODELS Initialisation
+VALID_MODELS = ["munit","spade"]
+MODEL_NEW_SIZE = CONFIG.model_config["new_size"]
+MODEL = FLOOD_MODEL(CONFIG.model_config)
+MASK_MODEL = Resnet34_8s(num_classes=19)
+MASK_MODEL.load_state_dict(torch.load(CONFIG.MODEL_WEIGHT_FILE))
+MASK_MODEL.cuda()
+MASK_MODEL.eval()
 
-# Valid models that are supported by the API endpoint
-VALID_MODELS = ["munit"]
 
 # API server initialization
-app = Flask(__name__)  # pylint: disable=C0103
+DEBUG = os.environ.get("DEBUG", False)
+app = Flask(__name__)
 CORS(app)
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
-logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
-if torch.cuda.is_available():
-    logging.info("CUDA is available")
-else:
-    logging.warning("CUDA is not available")
-
-# MUNIT Hyperparameters and Model
-MUNIT_NEW_SIZE = CONFIG.munit_config["new_size"]
-MUNIT_MODEL = MUNIT_Trainer(CONFIG.munit_config)
-if torch.cuda.is_available():
-    MUNIT_STATE_DICT = torch.load(CONFIG.MUNIT_CHECKPOINT_FILE)
-else:
-    MUNIT_STATE_DICT = torch.load(CONFIG.MUNIT_CHECKPOINT_FILE, map_location={"cuda:0": "cpu"})
-MUNIT_MODEL.gen.load_state_dict(MUNIT_STATE_DICT["2"])
-if torch.cuda.is_available():
-    MUNIT_MODEL.cuda()  # type: ignore
-MUNIT_MODEL.eval()
-
-
-@app.route("/address/<string:version>/<string:address>", methods=["GET"])
-def version_address_to_photo(version: str, address: str) -> Response:
-    """Endpoint which returns an unprocessed photo of the supplied address"""
-    _ = version
-    return address_to_photo(address)
-
-
-@app.route("/address/<string:address>", methods=["GET"])
-def address_to_photo(address: str) -> Response:
-    """Endpoint which returns an unprocessed photo of the supplied address"""
-    try:
-        images = fetch_street_view_image(
-            address, CONFIG.GEO_CODER_API_KEY, CONFIG.STREET_VIEW_API_KEY
-        )
-    except Exception as exception:  # pylint: disable=W0703
-        response = jsonify(
-            {
-                "error": "An error occurred fetching the Google Street View image",
-                "exception_text": str(exception),
-            }
-        )
-        response.status_code = 500
-        return response
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        images.download_links(temp_dir)
-        files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
-        if "gsv_0.jpg" not in files:
-            response = jsonify({"error": "Image not found in response from Google Street View"})
-            response.status_code = 500
-            return response
-
-        gsv_image_path = os.path.join(temp_dir, "gsv_0.jpg")
-        watermarked_image_path = os.path.join(temp_dir, "gsv_watermarked.jpg")
-        apply_watermark(gsv_image_path, watermarked_image_path)
-        return send_file(watermarked_image_path, as_attachment=True)
-
-    # in the happy path, this should be unreachable
-    response = jsonify({"error": "Internal Server Error"})
-    response.status_code = 500
-    return response
-
+# Check if CUDA is available
+cuda_check(MODEL)
 
 @app.route("/flood/<string:model>/<string:address>", methods=["GET"])
 def flood(model: str, address: str) -> Response:
     """Endpoint which converts an address into a photo of the flooded future"""
-    if model.lower() not in VALID_MODELS:
-        response = jsonify({"error": "Invalid model", "valid_models": VALID_MODELS})
-        response.status_code = 400
-        return response
 
-    try:
-        images = fetch_street_view_image(
-            address, CONFIG.GEO_CODER_API_KEY, CONFIG.STREET_VIEW_API_KEY
-        )
-    except Exception as exception:  # pylint: disable=W0703
-        response = jsonify(
-            {
-                "error": "An error occurred fetching the Google Street View image",
-                "exception_text": str(exception),
-            }
-        )
-        response.status_code = 500
-        return response
+    model_validation(model, VALID_MODELS)
+    water_level, shift, rp, flood_risk, address = fetch_climate_data(address)
+    images = fetch_image(address)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        images.download_links(temp_dir)
-        files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
-        if "gsv_0.jpg" not in files:
-            response = jsonify({"error": "Image not found in response from Google Street View"})
-            response.status_code = 200
-            return response
+        create_temp_dir(images, temp_dir)
+        path_to_gsv_image, gsv_image_response = encode_image(temp_dir)
+        path_to_flooded_image = model_launch(MODEL, ROUTE_MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
+        flooded_image_response  = decode_image(temp_dir, path_to_flooded_image)
 
-        path_to_gsv_image = os.path.join(temp_dir, "gsv_0.jpg")
-        path_to_gsv_image_watermarked = os.path.join(temp_dir, "gsv_watermarked.jpg")
-        apply_watermark(path_to_gsv_image, path_to_gsv_image_watermarked)
-        with open(path_to_gsv_image_watermarked, "rb") as gsv_image_handle:
-            gsv_image_data = gsv_image_handle.read()
-        gsv_image_encoded = base64.b64encode(gsv_image_data)
-        gsv_image_response = gsv_image_encoded.decode("ascii")
-
-        extractor = Extractor()
-        climate_metadata = extractor.metadata_for_address(address)
-
-        if (
-            climate_metadata.relative_change_precip is not None
-            and climate_metadata.relative_change_precip >= 0.4
-        ):
-            with torch.no_grad():
-                transform = transforms.Compose(
-                    [
-                        transforms.Resize(MUNIT_NEW_SIZE),
-                        transforms.ToTensor(),
-                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                    ]
-                )
-
-                image_transformed = transform(
-                    Image.open(path_to_gsv_image).convert("RGB")
-                ).unsqueeze(0)
-                if torch.cuda.is_available():
-                    image_transformed = image_transformed.cuda()
-                x_a = torch.Tensor(image_transformed)
-                c_xa_b, _ = MUNIT_MODEL.gen.encode(x_a, 1)
-
-                # Initiate parameters
-                content = c_xa_b
-                style_data = np.load(CONFIG.MUNIT_STYLE_FILE)
-                style = torch.tensor(style_data.reshape(1, 16, 1, 1), dtype=torch.float)
-                if torch.cuda.is_available():
-                    style = style.cuda()
-
-                outputs = MUNIT_MODEL.gen.decode(content, style, 2)
-                outputs = (outputs + 1) / 2.0
-
-                path_to_flooded_image = os.path.join(temp_dir, "output" + "{:03d}.jpg".format(0))
-                vutils.save_image(outputs.data, path_to_flooded_image, padding=0, normalize=True)
-
-                path_to_flooded_image_watermarked = os.path.join(
-                    temp_dir, "flooded_watermarked.jpg"
-                )
-                apply_watermark(path_to_flooded_image, path_to_flooded_image_watermarked)
-
-                with open(path_to_flooded_image_watermarked, "rb") as flooded_image_handle:
-                    flooded_image_data = flooded_image_handle.read()
-                flooded_image_encoded = base64.b64encode(flooded_image_data)
-                flooded_image_response = flooded_image_encoded.decode("ascii")
-        else:
-            flooded_image_response = None
-
-        response = {
-            "original": gsv_image_response,
-            "flooded": flooded_image_response,
-            "metadata": {
-                "relative_change_precipitation": {
-                    "title": "Relative Change in Precipitation by 2050 (in CM)",
-                    "value": climate_metadata.relative_change_precip,
-                },
-                "monthly_average_precipitation": {
-                    "title": "Monthly Average Precipitation in 2050 (in CM)",
-                    "value": climate_metadata.monthly_average_precip,
-                },
+    response = {
+        "original": gsv_image_response,
+        "flooded": flooded_image_response,
+        "metadata": {
+            "water_level": {
+                 "title": "Expected Water Level (in CM):",
+                 "value": water_level,
             },
-        }
+            "rp": {
+                "title": "Return Period (in years):",
+                "value": rp,
+            },
+            "flood_risk": {
+                "title": "Flood Risk (in %):",
+                "value": flood_risk,
+            },
+            "shift": {
+                "title": "Frequency Shift (in %):",
+                "value": shift,
+            },
+                    },
+                }
 
-        if flooded_image_response is None:
-            response["warning"] = "Low risk of flooding, therefore no visualization available"
-
-        return jsonify(response)
-
-    # in the happy path, this should be unreachable
-    response = jsonify({"error": "Internal Server Error"})
-    response.status_code = 500
-    return response
-
-
-@app.route("/metrics", methods=["GET"])
-def metrics() -> Response:
-    """Prometheus metrics endpoint"""
-    return Response(
-        prometheus_client.generate_latest(prometheus_client.REGISTRY), mimetype="text/plain"
-    )
-
-
-@app.route("/healthcheck", methods=["GET"])
-def healthcheck() -> Response:
-    """Healthcheck endpoint"""
-    return Response("ok", mimetype="text/plain")
-
+    return jsonify(response)
 
 if __name__ == "__main__":
-    app.run(debug=bool(DEBUG))
+    app.run(host= '0.0.0.0', port=5000)
+

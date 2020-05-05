@@ -3,8 +3,8 @@ Copyright (C) 2017 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 from comet_ml import Experiment
-from ccai.nn.munit.networks import AdaINGen, AdaINGen_double, MsImageDis, VAEGen
-from ccai.nn.munit.utils import (
+from ccai.nn.spade.networks import SpadeGen, MsImageDis, VAEGen, MultiscaleDiscriminator, VGGLoss
+from ccai.nn.spade.utils import (
     weights_init,
     get_model_list,
     vgg_preprocess,
@@ -17,7 +17,7 @@ from ccai.nn.munit.utils import (
     load_segmentation_model,
     decode_segmap,
     domainClassifier,
-    merge_classes
+    merge_classes,
 )
 from torch.autograd import Variable
 from torchvision import transforms
@@ -25,81 +25,92 @@ import torch
 import torch.nn as nn
 import os
 from PIL import Image
+from torchvision.utils import save_image
 
 
 class MUNIT_Trainer(nn.Module):
     def __init__(self, hyperparameters):
         super(MUNIT_Trainer, self).__init__()
         lr = hyperparameters["lr"]
-        self.gen_state = hyperparameters["gen_state"]
-        self.guided = hyperparameters["guided"]
         self.newsize = hyperparameters["crop_image_height"]
         self.semantic_w = hyperparameters["semantic_w"] > 0
         self.recon_mask = hyperparameters["recon_mask"] == 1
         self.dann_scheduler = None
         self.full_adaptation = hyperparameters["adaptation"]["full_adaptation"] == 1
-        
+        dim = hyperparameters["gen"]["dim"]
+        n_downsample = hyperparameters["gen"]["n_downsample"]
+        latent_dim = dim * (2 ** n_downsample)
+
         if "domain_adv_w" in hyperparameters.keys():
             self.domain_classif_ab = hyperparameters["domain_adv_w"] > 0
         else:
             self.domain_classif_ab = False
-            
-        if hyperparameters['adaptation']['dfeat_lambda'] > 0:
+
+        if hyperparameters["adaptation"]["dfeat_lambda"] > 0:
             self.use_classifier_sr = True
-        else: 
+        else:
             self.use_classifier_sr = False
-            
-        if hyperparameters['adaptation']['sem_seg_lambda'] > 0:
+
+        if hyperparameters["adaptation"]["sem_seg_lambda"] > 0:
             self.train_seg = True
-        else: 
+        else:
             self.train_seg = False
-        
-        if hyperparameters['adaptation']['output_classifier_lambda'] > 0:
+
+        if hyperparameters["adaptation"]["output_classifier_lambda"] > 0:
             self.use_output_classifier_sr = True
-        else: 
+        else:
             self.use_output_classifier_sr = False
 
-        if self.gen_state == 0:
-            # Initiate the networks
-            self.gen_a = AdaINGen(
-                hyperparameters["input_dim_a"], hyperparameters["gen"]
-            )  # auto-encoder for domain a
-            self.gen_b = AdaINGen(
-                hyperparameters["input_dim_b"], hyperparameters["gen"]
-            )  # auto-encoder for domain b
+        self.gen = SpadeGen(hyperparameters["input_dim_a"] + 1, hyperparameters["gen"])
 
-        elif self.gen_state == 1:
-            self.gen = AdaINGen_double(
-                hyperparameters["input_dim_a"], hyperparameters["gen"]
-            )
+        # Note: the "+1" is for the masks
+        if hyperparameters["dis"]["type"] == "patchgan":
+            print("Using patchgan discrminator...")
+            self.dis_a = MultiscaleDiscriminator(
+                hyperparameters["input_dim_a"], hyperparameters["dis"]
+            )  # discriminator for domain a
+            self.dis_b = MultiscaleDiscriminator(
+                hyperparameters["input_dim_b"], hyperparameters["dis"]
+            )  # discriminator for domain b
+            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
+
+            self.dis_a_masked = MultiscaleDiscriminator(
+                hyperparameters["input_dim_a"], hyperparameters["dis"]
+            )  # discriminator for domain a
+            self.dis_b_masked = MultiscaleDiscriminator(
+                hyperparameters["input_dim_b"], hyperparameters["dis"]
+            )  # discriminator for domain b
+            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
+
         else:
-            print("self.gen_state unknown value:", self.gen_state)
+            self.dis_a = MsImageDis(
+                hyperparameters["input_dim_a"], hyperparameters["dis"]
+            )  # discriminator for domain a
+            self.dis_b = MsImageDis(
+                hyperparameters["input_dim_b"], hyperparameters["dis"]
+            )  # discriminator for domain b
+            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
+            self.dis_a_masked = MsImageDis(
+                hyperparameters["input_dim_a"], hyperparameters["dis"]
+            )  # discriminator for domain a
+            self.dis_b_masked = MsImageDis(
+                hyperparameters["input_dim_b"], hyperparameters["dis"]
+            )  # discriminator for domain b
+            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
 
-        self.dis_a = MsImageDis(
-            hyperparameters["input_dim_a"], hyperparameters["dis"]
-        )  # discriminator for domain a
-        self.dis_b = MsImageDis(
-            hyperparameters["input_dim_b"], hyperparameters["dis"]
-        )  # discriminator for domain b
-        self.instancenorm = nn.InstanceNorm2d(512, affine=False)
-        self.style_dim = hyperparameters["gen"]["style_dim"]
-
-        # fix the noise used in sampling
+        # fix the noise usd in sampling
         display_size = int(hyperparameters["display_size"])
-        self.s_a = torch.randn(display_size, self.style_dim, 1, 1).cuda()
-        self.s_b = torch.randn(display_size, self.style_dim, 1, 1).cuda()
-
         # Setup the optimizers
         beta1 = hyperparameters["beta1"]
         beta2 = hyperparameters["beta2"]
-        dis_params = list(self.dis_a.parameters()) + list(self.dis_b.parameters())
+        dis_params = (
+            list(self.dis_a.parameters())
+            + list(self.dis_b.parameters())
+            + list(self.dis_a_masked.parameters())
+            + list(self.dis_b_masked.parameters())
+        )
 
-        if self.gen_state == 0:
-            gen_params = list(self.gen_a.parameters()) + list(self.gen_b.parameters())
-        elif self.gen_state == 1:
-            gen_params = list(self.gen.parameters())
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+        gen_params = list(self.gen.parameters())
 
         self.dis_opt = torch.optim.Adam(
             [p for p in dis_params if p.requires_grad],
@@ -120,29 +131,23 @@ class MUNIT_Trainer(nn.Module):
         self.apply(weights_init(hyperparameters["init"]))
         self.dis_a.apply(weights_init("gaussian"))
         self.dis_b.apply(weights_init("gaussian"))
+        self.dis_a_masked.apply(weights_init("gaussian"))
+        self.dis_b_masked.apply(weights_init("gaussian"))
 
         # Load VGG model if needed
-        if "vgg_w" in hyperparameters.keys() and hyperparameters["vgg_w"] > 0:
-            self.vgg = load_vgg16(hyperparameters["vgg_model_path"] + "/models")
-            self.vgg.eval()
-            for param in self.vgg.parameters():
-                param.requires_grad = False
+        if hyperparameters["vgg_w"] > 0:
+            self.criterionVGG = VGGLoss()
 
         # Load semantic segmentation model if needed
-        if "semantic_w" in hyperparameters.keys() and hyperparameters["semantic_w"] > 0:
-            self.segmentation_model = load_segmentation_model(
-                hyperparameters["semantic_ckpt_path"], 19
-            )
-            self.segmentation_model.eval()
-            for param in self.segmentation_model.parameters():
-                param.requires_grad = False
+        # if "semantic_w" in hyperparameters.keys() and hyperparameters["semantic_w"] > 0:
+        self.segmentation_model = load_segmentation_model(hyperparameters["semantic_ckpt_path"], 19)
+        self.segmentation_model.eval()
+        for param in self.segmentation_model.parameters():
+            param.requires_grad = False
 
         # Load domain classifier if needed
-        if (
-            "domain_adv_w" in hyperparameters.keys()
-            and hyperparameters["domain_adv_w"] > 0
-        ):
-            self.domain_classifier_ab = domainClassifier(256)
+        if "domain_adv_w" in hyperparameters.keys() and hyperparameters["domain_adv_w"] > 0:
+            self.domain_classifier_ab = domainClassifier(input_dim=latent_dim, dim=256)
             dann_params = list(self.domain_classifier_ab.parameters())
             self.dann_opt = torch.optim.Adam(
                 [p for p in dann_params if p.requires_grad],
@@ -152,13 +157,16 @@ class MUNIT_Trainer(nn.Module):
             )
             self.domain_classifier_ab.apply(weights_init("gaussian"))
             self.dann_scheduler = get_scheduler(self.dann_opt, hyperparameters)
-         
+
         # Load classifier on features for syn, real adaptation
         if self.use_classifier_sr:
-            
-            self.domain_classifier_sr_b = domainClassifier(256)
-            self.domain_classifier_sr_a = domainClassifier(256)
-            dann_params = list(self.domain_classifier_sr_a.parameters()) + list(self.domain_classifier_sr_b.parameters()) 
+            #! Hardcoded
+            self.domain_classifier_sr_b = domainClassifier(input_dim=latent_dim, dim=256)
+            self.domain_classifier_sr_a = domainClassifier(input_dim=latent_dim, dim=256)
+
+            dann_params = list(self.domain_classifier_sr_a.parameters()) + list(
+                self.domain_classifier_sr_b.parameters()
+            )
             self.classif_opt_sr = torch.optim.Adam(
                 [p for p in dann_params if p.requires_grad],
                 lr=lr,
@@ -168,15 +176,27 @@ class MUNIT_Trainer(nn.Module):
             self.domain_classifier_sr_a.apply(weights_init("gaussian"))
             self.domain_classifier_sr_b.apply(weights_init("gaussian"))
             self.classif_sr_scheduler = get_scheduler(self.classif_opt_sr, hyperparameters)
-            
+
         if self.use_output_classifier_sr:
-            self.output_classifier_sr_a = MsImageDis(
-            hyperparameters["input_dim_a"], hyperparameters["dis"]
-            )  # discriminator for domain a,sr
-            self.output_classifier_sr_b = MsImageDis(
-            hyperparameters["input_dim_a"], hyperparameters["dis"]
-            )  # discriminator for domain b,sr
-            dann_params = list(self.output_classifier_sr_a.parameters()) + list(self.output_classifier_sr_b.parameters())
+            if self.hyperparameters["dis"]["type"] == "patchgan":
+                self.output_classifier_sr_a = MultiscaleDiscriminator(
+                    hyperparameters["input_dim_a"], hyperparameters["dis"]
+                )  # discriminator for domain a,sr
+                self.output_classifier_sr_b = MultiscaleDiscriminator(
+                    hyperparameters["input_dim_a"], hyperparameters["dis"]
+                )  # discriminator for domain b,sr
+
+            else:
+                self.output_classifier_sr_a = MsImageDis(
+                    hyperparameters["input_dim_a"], hyperparameters["dis"]
+                )  # discriminator for domain a,sr
+                self.output_classifier_sr_b = MsImageDis(
+                    hyperparameters["input_dim_a"], hyperparameters["dis"]
+                )  # discriminator for domain b,sr
+
+            dann_params = list(self.output_classifier_sr_a.parameters()) + list(
+                self.output_classifier_sr_b.parameters()
+            )
             self.output_classif_opt_sr = torch.optim.Adam(
                 [p for p in dann_params if p.requires_grad],
                 lr=lr,
@@ -188,16 +208,16 @@ class MUNIT_Trainer(nn.Module):
             self.output_scheduler_sr = get_scheduler(self.output_classif_opt_sr, hyperparameters)
 
         if self.train_seg:
-            pretrained = load_segmentation_model(
-                hyperparameters["semantic_ckpt_path"], 19
-            )
+            pretrained = load_segmentation_model(hyperparameters["semantic_ckpt_path"], 19)
             last_layer = nn.Conv2d(512, 10, kernel_size=1)
-            model = torch.nn.Sequential(*list(pretrained.resnet34_8s.children())[7:-1], last_layer.cuda())
+            model = torch.nn.Sequential(
+                *list(pretrained.resnet34_8s.children())[7:-1], last_layer.cuda()
+            )
             self.segmentation_head = model
-            
+
             for param in self.segmentation_head.parameters():
                 param.requires_grad = True
-                
+
             dann_params = list(self.segmentation_head.parameters())
             self.segmentation_opt = torch.optim.Adam(
                 [p for p in dann_params if p.requires_grad],
@@ -207,7 +227,6 @@ class MUNIT_Trainer(nn.Module):
             )
             self.scheduler_seg = get_scheduler(self.segmentation_opt, hyperparameters)
 
-            
     def recon_criterion(self, input, target):
         """
         Compute pixelwise L1 loss between two images input and target
@@ -236,7 +255,7 @@ class MUNIT_Trainer(nn.Module):
         """
         return torch.mean(torch.abs(torch.mul((input - target), 1 - mask)))
 
-    def forward(self, x_a, x_b):
+    def forward(self, x_a, x_b, m_a, m_b):
         """
         Perform the translation from domain A (resp B) to domain B (resp A): x_a to x_ab (resp: x_b to x_ba).
         
@@ -248,25 +267,35 @@ class MUNIT_Trainer(nn.Module):
             torch.Tensor, torch.Tensor -- Translated version of x_a in domain B, Translated version of x_b in domain A
         """
         self.eval()
-        s_a = Variable(self.s_a)
-        s_b = Variable(self.s_b)
-        if self.gen_state == 0:
-            c_a, s_a_fake = self.gen_a.encode(x_a)
-            c_b, s_b_fake = self.gen_b.encode(x_b)
-            x_ba = self.gen_a.decode(c_b, s_a)
-            x_ab = self.gen_b.decode(c_a, s_b)
-        elif self.gen_state == 1:
-            c_a, s_a_fake = self.gen.encode(x_a, 1)
-            c_b, s_b_fake = self.gen.encode(x_b, 2)
-            x_ba = self.gen.decode(c_b, s_a, 1)
-            x_ab = self.gen.decode(c_a, s_b, 2)
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+        m_a_seg = self.merge_seg_with_mask(x_a, m_a)
+        m_b_seg = self.merge_seg_with_mask(x_b, m_b)
+
+        avg_mask_a = self.average_mask(x_a, m_a)
+        avg_mask_b = self.average_mask(x_b, m_b)
+
+        x_a_augment = torch.cat([x_a, m_a], dim=1)
+        x_b_augment = torch.cat([x_b, m_b], dim=1)
+
+        c_a = self.gen.encode(x_a_augment, 1)
+        c_b = self.gen.encode(x_b_augment, 2)
+
+        x_ba = self.gen.decode(c_b, m_b_seg, 1)
+        x_ab = self.gen.decode(c_a, m_a_seg, 2)
+
         self.train()
         return x_ab, x_ba
 
     def gen_update(
-        self, x_a, x_b, hyperparameters ,mask_a=None, mask_b=None, comet_exp=None, synth=False, semantic_gt_a=None, semantic_gt_b=None
+        self,
+        x_a,
+        x_b,
+        hyperparameters,
+        mask_a,
+        mask_b,
+        comet_exp=None,
+        synth=False,
+        semantic_gt_a=None,
+        semantic_gt_b=None,
     ):
         """
         Update the generator parameters
@@ -286,104 +315,76 @@ class MUNIT_Trainer(nn.Module):
             [type] -- [description]
         """
         self.gen_opt.zero_grad()
-        s_a = Variable(torch.randn(x_a.size(0), self.style_dim, 1, 1).cuda())
-        s_b = Variable(torch.randn(x_b.size(0), self.style_dim, 1, 1).cuda())
 
-        if self.gen_state == 0:
-            # encode
-            c_a, s_a_prime = self.gen_a.encode(x_a)
-            c_b, s_b_prime = self.gen_b.encode(x_b)
-            # decode (within domain)
-            x_a_recon = self.gen_a.decode(c_a, s_a_prime)
-            x_b_recon = self.gen_b.decode(c_b, s_b_prime)
-            # decode (cross domain)
-            if self.guided == 0:
-                x_ba = self.gen_a.decode(c_b, s_a)
-                x_ab = self.gen_b.decode(c_a, s_b)
-            elif self.guided == 1:
-                x_ba = self.gen_a.decode(c_b, s_a_prime)
-                x_ab = self.gen_b.decode(c_a, s_b_prime)
-            else:
-                print("self.guided unknown value:", self.guided)
-            # encode again
-            c_b_recon, s_a_recon = self.gen_a.encode(x_ba)
-            c_a_recon, s_b_recon = self.gen_b.encode(x_ab)
-            # decode again (if needed)
-            x_aba = (
-                self.gen_a.decode(c_a_recon, s_a_prime)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else None
-            )
-            x_bab = (
-                self.gen_b.decode(c_b_recon, s_b_prime)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else None
-            )
-        elif self.gen_state == 1:
-            # encode
-            c_a, s_a_prime = self.gen.encode(x_a, 1)
+        mask_a_seg = self.merge_seg_with_mask(x_a, mask_a)
+        mask_b_seg = self.merge_seg_with_mask(x_b, mask_b)
 
-            c_b, s_b_prime = self.gen.encode(x_b, 2)
-            # decode (within domain)
-            x_a_recon = self.gen.decode(c_a, s_a_prime, 1)
-            x_b_recon = self.gen.decode(c_b, s_b_prime, 2)
-            # decode (cross domain)
-            if self.guided == 0:
-                x_ba = self.gen.decode(c_b, s_a, 1)
-                x_ab = self.gen.decode(c_a, s_b, 2)
-            elif self.guided == 1:
-                x_ba = self.gen.decode(c_b, s_a_prime, 1)
-                x_ab = self.gen.decode(c_a, s_b_prime, 2)
-            else:
-                print("self.guided unknown value:", self.guided)
+        avg_mask_a = self.average_mask(x_a, mask_a)
+        avg_mask_b = self.average_mask(x_b, mask_b)
 
-            # encode again
-            c_b_recon, s_a_recon = self.gen.encode(x_ba, 1)
-            c_a_recon, s_b_recon = self.gen.encode(x_ab, 2)
-            # decode again (if needed)
-            x_aba = (
-                self.gen.decode(c_a_recon, s_a_prime, 1)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else None
-            )
-            x_bab = (
-                self.gen.decode(c_b_recon, s_b_prime, 2)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else None
-            )
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+        x_a_augment = torch.cat([x_a, mask_a], dim=1)
+        x_b_augment = torch.cat([x_b, mask_b], dim=1)
+
+        # encode
+        c_a = self.gen.encode(x_a_augment, 1)
+        c_b = self.gen.encode(x_b_augment, 2)
+
+        # decode (within domain)
+        x_a_recon = self.gen.decode(c_a, mask_a_seg, 1)
+        x_b_recon = self.gen.decode(c_b, mask_b_seg, 2)
+
+        x_ba = self.gen.decode(c_b, mask_b_seg, 1)
+        x_ab = self.gen.decode(c_a, mask_a_seg, 2)
+
+        x_ba_augment = torch.cat([x_ba, mask_b], dim=1)
+        x_ab_augment = torch.cat([x_ab, mask_a], dim=1)
+
+        # encode again
+        c_b_recon = self.gen.encode(x_ba_augment, 1)
+        c_a_recon = self.gen.encode(x_ab_augment, 2)
+
+        # decode again (if needed)
+        x_aba = (
+            self.gen.decode(c_a_recon, mask_a_seg, 1)
+            if hyperparameters["recon_x_cyc_w"] > 0
+            else None
+        )
+        x_bab = (
+            self.gen.decode(c_b_recon, mask_b_seg, 2)
+            if hyperparameters["recon_x_cyc_w"] > 0
+            else None
+        )
 
         # reconstruction loss
-        self.loss_gen_recon_x_a = self.recon_criterion(x_a_recon, x_a)
-        self.loss_gen_recon_x_b = self.recon_criterion(x_b_recon, x_b)
-        
-        if self.guided == 0:
-            self.loss_gen_recon_s_a = self.recon_criterion(s_a_recon, s_a)
-            self.loss_gen_recon_s_b = self.recon_criterion(s_b_recon, s_b)
-            
-        elif self.guided == 1:
-            self.loss_gen_recon_s_a = self.recon_criterion(s_a_recon, s_a_prime)
-            self.loss_gen_recon_s_b = self.recon_criterion(s_b_recon, s_b_prime)
-        else:
-            print("self.guided unknown value:", self.guided)
+        # self.loss_gen_recon_x_a = self.recon_criterion(x_a_recon, x_a * (1.0 - mask_a) + avg_mask_a)
+        # self.loss_gen_recon_x_b = self.recon_criterion(x_b_recon, x_b * (1.0 - mask_b) + avg_mask_b)
 
-        
+        self.loss_gen_recon_x_a = self.recon_criterion_mask(x_a_recon, x_a, mask_a)
+        self.loss_gen_recon_x_b = self.recon_criterion_mask(x_b_recon, x_b, mask_b)
+
+        # Contex preserving loss
+        self.context_loss = self.recon_criterion_mask(
+            x_ab, x_a, mask_a
+        ) + self.recon_criterion_mask(x_ba, x_b, mask_b)
+
         self.loss_gen_recon_c_a = self.recon_criterion(c_a_recon, c_a)
         self.loss_gen_recon_c_b = self.recon_criterion(c_b_recon, c_b)
-        
+
         # Synthetic reconstruction loss
         if synth:
-            #print('mask_b.shape', mask_b.shape)
+            # print('mask_b.shape', mask_b.shape)
             # Define the mask of exact same pixel among a pair
             mask_alignment = (torch.sum(torch.abs(x_a - x_b), 1) == 0).unsqueeze(1)
             mask_alignment = mask_alignment.type(torch.cuda.FloatTensor)
-            #print('mask_alignment.shape', mask_alignment.shape)
-            
-        
-        self.loss_gen_recon_synth = self.recon_criterion_mask(x_ab, x_b, 1-mask_alignment) + \
-                                    self.recon_criterion_mask(x_ba, x_a, 1-mask_alignment)  if synth else 0
-        
+            # print('mask_alignment.shape', mask_alignment.shape)
+
+        self.loss_gen_recon_synth = (
+            self.recon_criterion_mask(x_ab, x_b, 1 - mask_alignment)
+            + self.recon_criterion_mask(x_ba, x_a, 1 - mask_alignment)
+            if synth
+            else 0
+        )
+
         if self.recon_mask:
             self.loss_gen_cycrecon_x_a = (
                 self.recon_criterion_mask(x_aba, x_a, mask_a)
@@ -397,29 +398,33 @@ class MUNIT_Trainer(nn.Module):
             )
         else:
             self.loss_gen_cycrecon_x_a = (
-                self.recon_criterion(x_aba, x_a)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else 0
+                self.recon_criterion(x_aba, x_a) if hyperparameters["recon_x_cyc_w"] > 0 else 0
             )
             self.loss_gen_cycrecon_x_b = (
-                self.recon_criterion(x_bab, x_b)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else 0
+                self.recon_criterion(x_bab, x_b) if hyperparameters["recon_x_cyc_w"] > 0 else 0
             )
 
         # GAN loss
-        self.loss_gen_adv_a = self.dis_a.calc_gen_loss(x_ba)
-        self.loss_gen_adv_b = self.dis_b.calc_gen_loss(x_ab)
+        # Concat masks before feeding to loss
+
+        self.loss_gen_adv_a = self.dis_a.calc_gen_loss(x_ba, x_a, comet_exp, mode="a")
+
+        self.loss_gen_adv_a += self.dis_a_masked.calc_gen_loss(
+            x_ba * mask_b, x_a * mask_a, comet_exp, mode="a"
+        )
+
+        self.loss_gen_adv_b = self.dis_b.calc_gen_loss(x_ab, x_b, comet_exp, mode="b")
+
+        self.loss_gen_adv_b += self.dis_b_masked.calc_gen_loss(
+            x_ab * mask_a, x_b * mask_b, comet_exp, mode="b"
+        )
+
         # domain-invariant perceptual loss
         self.loss_gen_vgg_a = (
-            self.compute_vgg_loss(self.vgg, x_ba, x_b)
-            if hyperparameters["vgg_w"] > 0
-            else 0
+            self.compute_vgg_loss(x_ba, x_b, mask_b) if hyperparameters["vgg_w"] > 0 else 0
         )
         self.loss_gen_vgg_b = (
-            self.compute_vgg_loss(self.vgg, x_ab, x_a)
-            if hyperparameters["vgg_w"] > 0
-            else 0
+            self.compute_vgg_loss(x_ab, x_a, mask_a) if hyperparameters["vgg_w"] > 0 else 0
         )
 
         # semantic-segmentation loss
@@ -432,79 +437,93 @@ class MUNIT_Trainer(nn.Module):
         # Domain adversarial loss (c_a and c_b are swapped because we want the feature to be less informative
         # minmax (accuracy but max min loss)
         self.domain_adv_loss = (
-            self.compute_domain_adv_loss(c_a,c_b, compute_accuracy=False, minimize=False)
+            self.compute_domain_adv_loss(c_a, c_b, compute_accuracy=False, minimize=False)
             if hyperparameters["domain_adv_w"] > 0
             else 0
         )
-        
+
         self.loss_classifier_sr = (
             self.compute_classifier_sr_loss(c_a, c_b, domain_synth=synth, fool=True)
             if hyperparameters["adaptation"]["adv_lambda"] > 0
             else 0
         )
-        
+
         if hyperparameters["adaptation"]["output_adv_lambda"] > 0:
-            self.loss_output_classifier_sr = self.output_classifier_sr_a.calc_gen_loss_sr(x_ba) + self.output_classifier_sr_b.calc_gen_loss_sr(x_ab)
-        
+            self.loss_output_classifier_sr = self.output_classifier_sr_a.calc_gen_loss_sr(
+                x_ba
+            ) + self.output_classifier_sr_b.calc_gen_loss_sr(x_ab)
+
         else:
-        
+
             self.loss_output_classifier_sr = 0
-        
+
         # total loss
         self.loss_gen_total = (
             hyperparameters["gan_w"] * self.loss_gen_adv_a
             + hyperparameters["gan_w"] * self.loss_gen_adv_b
             + hyperparameters["recon_x_w"] * self.loss_gen_recon_x_a
-            + hyperparameters["recon_s_w"] * self.loss_gen_recon_s_a
             + hyperparameters["recon_c_w"] * self.loss_gen_recon_c_a
             + hyperparameters["recon_x_w"] * self.loss_gen_recon_x_b
-            + hyperparameters["recon_s_w"] * self.loss_gen_recon_s_b
             + hyperparameters["recon_c_w"] * self.loss_gen_recon_c_b
             + hyperparameters["recon_x_cyc_w"] * self.loss_gen_cycrecon_x_a
             + hyperparameters["recon_x_cyc_w"] * self.loss_gen_cycrecon_x_b
             + hyperparameters["vgg_w"] * self.loss_gen_vgg_a
             + hyperparameters["vgg_w"] * self.loss_gen_vgg_b
+            + hyperparameters["context_w"] * self.context_loss
             + hyperparameters["semantic_w"] * self.loss_sem_seg
             + hyperparameters["domain_adv_w"] * self.domain_adv_loss
             + hyperparameters["recon_synth_w"] * self.loss_gen_recon_synth
             + hyperparameters["adaptation"]["adv_lambda"] * self.loss_classifier_sr
-            + hyperparameters["adaptation"]["output_adv_lambda"] * self.loss_output_classifier_sr 
+            + hyperparameters["adaptation"]["output_adv_lambda"] * self.loss_output_classifier_sr
         )
-        
+
         self.loss_gen_total.backward()
         self.gen_opt.step()
-        
+
         if comet_exp is not None:
+
             comet_exp.log_metric("loss_gen_adv_a", self.loss_gen_adv_a.cpu().detach())
             comet_exp.log_metric("loss_gen_adv_b", self.loss_gen_adv_b.cpu().detach())
             comet_exp.log_metric("loss_gen_recon_x_a", self.loss_gen_recon_x_a.cpu().detach())
-            comet_exp.log_metric("loss_gen_recon_s_a", self.loss_gen_recon_s_a.cpu().detach())
-            comet_exp.log_metric("loss_gen_recon_c_a", self.loss_gen_recon_c_a.cpu().detach())
             comet_exp.log_metric("loss_gen_recon_x_b", self.loss_gen_recon_x_b.cpu().detach())
-            comet_exp.log_metric("loss_gen_recon_s_b", self.loss_gen_recon_s_b.cpu().detach())
-            comet_exp.log_metric("loss_gen_recon_c_b", self.loss_gen_recon_c_b.cpu().detach())
-            comet_exp.log_metric("loss_gen_cycrecon_x_a", self.loss_gen_cycrecon_x_a.cpu().detach())
-            comet_exp.log_metric("loss_gen_cycrecon_x_b", self.loss_gen_cycrecon_x_b.cpu().detach())
+
+            if hyperparameters["recon_c_w"] > 0:
+                comet_exp.log_metric("loss_gen_recon_c_a", self.loss_gen_recon_c_a.cpu().detach())
+                comet_exp.log_metric("loss_gen_recon_c_b", self.loss_gen_recon_c_b.cpu().detach())
+
+            if hyperparameters["recon_x_cyc_w"] > 0:
+                comet_exp.log_metric(
+                    "loss_gen_cycrecon_x_a", self.loss_gen_cycrecon_x_a.cpu().detach()
+                )
+                comet_exp.log_metric(
+                    "loss_gen_cycrecon_x_b", self.loss_gen_cycrecon_x_b.cpu().detach()
+                )
             comet_exp.log_metric("loss_gen_total", self.loss_gen_total.cpu().detach())
+
             if hyperparameters["vgg_w"] > 0:
                 comet_exp.log_metric("loss_gen_vgg_a", self.loss_gen_vgg_a.cpu().detach())
                 comet_exp.log_metric("loss_gen_vgg_b", self.loss_gen_vgg_b.cpu().detach())
+
             if hyperparameters["semantic_w"] > 0:
                 comet_exp.log_metric("loss_sem_seg", self.loss_sem_seg.cpu().detach())
+            if hyperparameters["context_w"] > 0:
+                comet_exp.log_metric("context_preserve_loss", self.context_loss.cpu().detach())
             if hyperparameters["domain_adv_w"] > 0:
                 comet_exp.log_metric("domain_adv_loss_gen", self.domain_adv_loss.cpu().detach())
             if synth:
-                comet_exp.log_metric("loss_gen_recon_synth", self.loss_gen_recon_synth.cpu().detach())
+                comet_exp.log_metric(
+                    "loss_gen_recon_synth", self.loss_gen_recon_synth.cpu().detach()
+                )
             if self.use_classifier_sr:
-                comet_exp.log_metric("loss_classifier_adv_sr", self.loss_classifier_sr.cpu().detach())
+                comet_exp.log_metric(
+                    "loss_classifier_adv_sr", self.loss_classifier_sr.cpu().detach()
+                )
             if self.use_output_classifier_sr:
-                comet_exp.log_metric("loss_output_classifier_adv_sr", self.loss_output_classifier_sr.cpu().detach())
+                comet_exp.log_metric(
+                    "loss_output_classifier_adv_sr", self.loss_output_classifier_sr.cpu().detach()
+                )
 
-                
-
-                
-
-    def compute_vgg_loss(self, vgg, img, target):
+    def compute_vgg_loss(self, img, target, mask):
         """ 
         Compute the domain-invariant perceptual loss
         
@@ -518,12 +537,15 @@ class MUNIT_Trainer(nn.Module):
         """
         img_vgg = vgg_preprocess(img)
         target_vgg = vgg_preprocess(target)
-        img_fea = vgg(img_vgg)
-        target_fea = vgg(target_vgg)
-        return torch.mean(
-            (self.instancenorm(img_fea) - self.instancenorm(target_fea)) ** 2
-        )
-    
+
+        # Mask input to VGG:
+        img_vgg = img_vgg * (1.0 - mask)
+        target_vgg = target_vgg * (1.0 - mask)
+
+        loss_G_VGG = self.criterionVGG(img_vgg, target_vgg)
+
+        return loss_G_VGG
+
     def compute_classifier_sr_loss(self, c_a, c_b, domain_synth=False, fool=False):
         """ 
         Compute classifier loss for the adaptation s/r 
@@ -541,22 +563,21 @@ class MUNIT_Trainer(nn.Module):
         output_a = self.domain_classifier_sr_a(c_a)
 
         # Infer domain classifier on content extracted from an image of domainB
-        output_b = self.domain_classifier_sr_b(c_b)  
-    
+        output_b = self.domain_classifier_sr_b(c_b)
+
         if fool:
             loss = torch.mean((output_a - 0.5) ** 2) + torch.mean((output_b - 0.5) ** 2)
 
-        else:            
+        else:
             if domain_synth:
                 loss = torch.mean((output_a - 0) ** 2) + torch.mean((output_b - 0) ** 2)
 
-            else: 
+            else:
                 loss = torch.mean((output_a - 1) ** 2) + torch.mean((output_b - 1) ** 2)
 
         return loss
-        
-        
-    def compute_domain_adv_loss(self, c_a, c_b, compute_accuracy=False,minimize=True):
+
+    def compute_domain_adv_loss(self, c_a, c_b, compute_accuracy=False, minimize=True):
         """ 
         Compute a domain adversarial loss on the embedding of the classifier:
         we are trying to learn an anonymized representation of the content. 
@@ -580,15 +601,14 @@ class MUNIT_Trainer(nn.Module):
         output_b = self.domain_classifier_ab(c_b)
 
         # Concatenate the output in a single vector
-        output = torch.cat((output_a,output_b))       
-        
-    
+        output = torch.cat((output_a, output_b))
+
         if minimize:
-            target = torch.tensor([1.,0.,0.,1.],device='cuda') 
+            target = torch.tensor([1.0, 0.0, 0.0, 1.0], device="cuda")
         else:
-            target = torch.tensor([0.5,0.5,0.5,0.5],device='cuda')
+            target = torch.tensor([0.5, 0.5, 0.5, 0.5], device="cuda")
         # mean square error loss
-        loss = torch.nn.MSELoss()(output,target)
+        loss = torch.nn.MSELoss()(output, target)
         if compute_accuracy:
             return loss, output_a[0], output_b[1]
         else:
@@ -612,12 +632,12 @@ class MUNIT_Trainer(nn.Module):
         # norm for semantic seg network
         input_transformed1 = seg_batch_transform(img1_denorm)
         input_transformed2 = seg_batch_transform(img2_denorm)
-        
+
         # compute labels from original image and logits from translated version
-        #target = (
+        # target = (
         #   self.segmentation_model(input_transformed1).max(1)[1]
-        #)
-        #Infer x_ab or x_ba 
+        # )
+        # Infer x_ab or x_ba
         output = self.segmentation_model(input_transformed2)
 
         # If we have a ground truth (simulated data), merge classes to fit the ground truth of our simulated world (19 to 10)
@@ -625,44 +645,90 @@ class MUNIT_Trainer(nn.Module):
             target = ground_truth.type(torch.long).cuda()
             target = target.squeeze(1)
             output = merge_classes(output).cuda()
-            new_class = 10 
-            
+            new_class = 10
+
         else:
-            #Else use the pretrained model 
-            target = (self.segmentation_model(input_transformed1).max(1)[1])
-            
-        
-        #If we don't want to compute the loss on the masked region 
+            # Else use the pretrained model
+            target = self.segmentation_model(input_transformed1).max(1)[1]
+
+        # If we don't want to compute the loss on the masked region
         if not self.full_adaptation and mask is not None:
             # Resize mask to the size of the image
             # ADRIEN  DANGEROUS TO CHAAAANGE
             mask1 = torch.nn.functional.interpolate(mask, size=(self.newsize, self.newsize))
-            
+
             mask1_tensor = torch.tensor(mask1, dtype=torch.long).cuda()
             mask1_tensor = mask1_tensor.squeeze(1)
 
             # we want the masked region to be labeled as unknown (19 is not an existing label)
-            target_with_mask = torch.mul(1 - mask1_tensor, target) + mask1_tensor * new_class #CATEGORICAL TENSOR (B 20 H W) (TARGET)
+            target_with_mask = (
+                torch.mul(1 - mask1_tensor, target) + mask1_tensor * new_class
+            )  # CATEGORICAL TENSOR (B 20 H W) (TARGET)
 
             mask2 = torch.nn.functional.interpolate(mask, size=(self.newsize, self.newsize))
             mask_tensor = torch.tensor(mask2, dtype=torch.float).cuda()
             output_with_mask = torch.mul(1 - mask_tensor, output)
-            # 
+            #
             # cat the mask as to the logits (loss=0 over the masked region)
-            output_with_mask_cat = torch.cat(
-               (output_with_mask, mask_tensor),dim=1
-            )
-            loss = nn.CrossEntropyLoss()(
-               output_with_mask_cat, target_with_mask
-            )
-        
+            output_with_mask_cat = torch.cat((output_with_mask, mask_tensor), dim=1)
+            loss = nn.CrossEntropyLoss()(output_with_mask_cat, target_with_mask)
+
         else:
-            loss = nn.CrossEntropyLoss()(
-               output, target
-            )
+            loss = nn.CrossEntropyLoss()(output, target)
         return loss
 
-    def sample(self, x_a, x_b):
+    def merge_seg_with_mask(self, img, mask):
+        """
+        Compute semantic segmentation loss between two images on the unmasked region or in the entire image
+        Arguments:
+            img1 {torch.Tensor} -- Image from domain A after transform in tensor format
+            img2 {torch.Tensor} -- Image transformed
+            mask {torch.Tensor} -- Binary mask where we force the loss to be zero
+            ground_truth {torch.Tensor} -- If available palletized image of size (batch, h, w) 
+        Returns:
+            torch.float -- Cross entropy loss on the unmasked region
+        """
+
+        # denorm
+        img_denorm = (img + 1) / 2.0
+
+        # norm for semantic seg network
+        input_transformed = seg_batch_transform(img_denorm)
+
+        # compute labels from original image and logits from translated version
+        # target = (
+        #   self.segmentation_model(input_transformed1).max(1)[1]
+        # )
+        # Infer x_ab or x_ba
+        output = self.segmentation_model(input_transformed)
+        max_value = output.size()[1]
+        max_value = mask_value = max_value + 1  # make masked value the largest class
+        output = output.argmax(1).unsqueeze(1)
+
+        # Zero out masked values:
+        output = output * (1 - mask) + (mask * mask_value)
+        output_mask = output.to(torch.float) / max_value
+
+        return output_mask
+
+    def average_mask(self, img, mask):
+        """
+        # Apply mask:
+        mask_region = img * mask
+
+        # Get average
+        avg = torch.mean(mask_region, dim=(2, 3))
+        avg = avg.unsqueeze(-1).unsqueeze(-1)
+
+        masked_avg = mask * avg
+        """
+
+        # Return random noise
+        masked_avg = torch.normal(mean=0, std=1, size=mask.size(), device="cuda")
+        masked_avg = masked_avg * mask
+        return masked_avg
+
+    def sample(self, x_a, x_b, m_a, m_b):
         """ 
         Infer the model on a batch of image
         
@@ -675,69 +741,30 @@ class MUNIT_Trainer(nn.Module):
             Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a, 
             x_ab_1,semantic segmentation x_ab_1, x_ab_2
         """
+
         self.eval()
-        s_a1 = Variable(self.s_a)
-        s_b1 = Variable(self.s_b)
-        s_a2 = Variable(torch.randn(x_a.size(0), self.style_dim, 1, 1).cuda())
-        s_b2 = Variable(torch.randn(x_b.size(0), self.style_dim, 1, 1).cuda())
+        m_a_seg = self.merge_seg_with_mask(x_a, m_a)
+        m_b_seg = self.merge_seg_with_mask(x_b, m_b)
+
+        avg_mask_a = self.average_mask(x_a, m_a)
+        avg_mask_b = self.average_mask(x_b, m_b)
+
         x_a_recon, x_b_recon, x_ba1, x_ba2, x_ab1, x_ab2 = [], [], [], [], [], []
 
-        if self.gen_state == 0:
-            for i in range(x_a.size(0)):
-                c_a, s_a_fake = self.gen_a.encode(x_a[i].unsqueeze(0))
-                c_b, s_b_fake = self.gen_b.encode(x_b[i].unsqueeze(0))
-                x_a_recon.append(self.gen_a.decode(c_a, s_a_fake))
-                x_b_recon.append(self.gen_b.decode(c_b, s_b_fake))
-                if self.guided == 0:
-                    x_ba1.append(self.gen_a.decode(c_b, s_a1[i].unsqueeze(0)))
-                    x_ba2.append(self.gen_a.decode(c_b, s_a2[i].unsqueeze(0)))
-                    x_ab1.append(self.gen_b.decode(c_a, s_b1[i].unsqueeze(0)))
-                    x_ab2.append(self.gen_b.decode(c_a, s_b2[i].unsqueeze(0)))
-                elif self.guided == 1:
-                    x_ba1.append(
-                        self.gen_a.decode(c_b, s_a_fake)
-                    )  # s_a1[i].unsqueeze(0)))
-                    x_ba2.append(
-                        self.gen_a.decode(c_b, s_a_fake)
-                    )  # s_a2[i].unsqueeze(0)))
-                    x_ab1.append(
-                        self.gen_b.decode(c_a, s_b_fake)
-                    )  # s_b1[i].unsqueeze(0)))
-                    x_ab2.append(
-                        self.gen_b.decode(c_a, s_b_fake)
-                    )  # s_b2[i].unsqueeze(0)))
-                else:
-                    print("self.guided unknown value:", self.guided)
+        x_a_augment = torch.cat([x_a, m_a], dim=1)
+        x_b_augment = torch.cat([x_b, m_b], dim=1)
 
-        elif self.gen_state == 1:
-            for i in range(x_a.size(0)):
-                c_a, s_a_fake = self.gen.encode(x_a[i].unsqueeze(0), 1)
-                c_b, s_b_fake = self.gen.encode(x_b[i].unsqueeze(0), 2)
-                x_a_recon.append(self.gen.decode(c_a, s_a_fake, 1))
-                x_b_recon.append(self.gen.decode(c_b, s_b_fake, 2))
-                if self.guided == 0:
-                    x_ba1.append(self.gen.decode(c_b, s_a1[i].unsqueeze(0), 1))
-                    x_ba2.append(self.gen.decode(c_b, s_a2[i].unsqueeze(0), 1))
-                    x_ab1.append(self.gen.decode(c_a, s_b1[i].unsqueeze(0), 2))
-                    x_ab2.append(self.gen.decode(c_a, s_b2[i].unsqueeze(0), 2))
-                elif self.guided == 1:
-                    x_ba1.append(
-                        self.gen.decode(c_b, s_a_fake, 1)
-                    )  # s_a1[i].unsqueeze(0)))
-                    x_ba2.append(
-                        self.gen.decode(c_b, s_a_fake, 1)
-                    )  # s_a2[i].unsqueeze(0)))
-                    x_ab1.append(
-                        self.gen.decode(c_a, s_b_fake, 2)
-                    )  # s_b1[i].unsqueeze(0)))
-                    x_ab2.append(
-                        self.gen.decode(c_a, s_b_fake, 2)
-                    )  # s_b2[i].unsqueeze(0)))
-                else:
-                    print("self.guided unknown value:", self.guided)
+        for i in range(x_a.size(0)):
+            c_a = self.gen.encode(x_a_augment[i].unsqueeze(0), 1)
+            c_b = self.gen.encode(x_b_augment[i].unsqueeze(0), 2)
 
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+            x_a_recon.append(self.gen.decode(c_a, m_a_seg[i].unsqueeze(0), 1))
+            x_b_recon.append(self.gen.decode(c_b, m_b_seg[i].unsqueeze(0), 2))
+
+            x_ba1.append(self.gen.decode(c_b, m_b_seg[i].unsqueeze(0), 1))  # s_a1[i].unsqueeze(0)))
+            x_ba2.append(self.gen.decode(c_b, m_b_seg[i].unsqueeze(0), 1))  # s_a2[i].unsqueeze(0)))
+            x_ab1.append(self.gen.decode(c_a, m_a_seg[i].unsqueeze(0), 2))  # s_b1[i].unsqueeze(0)))
+            x_ab2.append(self.gen.decode(c_a, m_a_seg[i].unsqueeze(0), 2))  # s_b2[i].unsqueeze(0)))
 
         x_a_recon, x_b_recon = torch.cat(x_a_recon), torch.cat(x_b_recon)
         x_ba1, x_ba2 = torch.cat(x_ba1), torch.cat(x_ba2)
@@ -754,12 +781,8 @@ class MUNIT_Trainer(nn.Module):
 
                 input_transformed_a = seg_transform()(im_a).unsqueeze(0)
                 input_transformed_b = seg_transform()(im_b).unsqueeze(0)
-                output_a = (
-                    self.segmentation_model(input_transformed_a).squeeze().max(0)[1]
-                )
-                output_b = (
-                    self.segmentation_model(input_transformed_b).squeeze().max(0)[1]
-                )
+                output_a = self.segmentation_model(input_transformed_a).squeeze().max(0)[1]
+                output_b = self.segmentation_model(input_transformed_b).squeeze().max(0)[1]
 
                 rgb_a = decode_segmap(output_a.cpu().numpy())
                 rgb_b = decode_segmap(output_b.cpu().numpy())
@@ -776,12 +799,127 @@ class MUNIT_Trainer(nn.Module):
                 input_transformed_ab = seg_transform()(image_ab).unsqueeze(0).to("cuda")
                 input_transformed_ba = seg_transform()(image_ba).unsqueeze(0).to("cuda")
 
-                output_ab = (
-                    self.segmentation_model(input_transformed_ab).squeeze().max(0)[1]
-                )
-                output_ba = (
-                    self.segmentation_model(input_transformed_ba).squeeze().max(0)[1]
-                )
+                output_ab = self.segmentation_model(input_transformed_ab).squeeze().max(0)[1]
+                output_ba = self.segmentation_model(input_transformed_ba).squeeze().max(0)[1]
+
+                rgb_ab = decode_segmap(output_ab.cpu().numpy())
+                rgb_ba = decode_segmap(output_ba.cpu().numpy())
+
+                rgb_ab = Image.fromarray(rgb_ab).resize((x_a.size(3), x_a.size(3)))
+                rgb_ba = Image.fromarray(rgb_ba).resize((x_a.size(3), x_a.size(3)))
+
+                rgb_ab_list.append(transforms.ToTensor()(rgb_ab).unsqueeze(0))
+                rgb_ba_list.append(transforms.ToTensor()(rgb_ba).unsqueeze(0))
+
+            rgb1_a, rgb1_b, rgb1_ab, rgb1_ba = (
+                torch.cat(rgb_a_list).cuda(),
+                torch.cat(rgb_b_list).cuda(),
+                torch.cat(rgb_ab_list).cuda(),
+                torch.cat(rgb_ba_list).cuda(),
+            )
+
+        self.train()
+        # Overlay mask onto image:
+        save_m_a = x_a - (x_a * m_a.repeat(1, 3, 1, 1)) + m_a.repeat(1, 3, 1, 1)
+        save_m_b = x_b - (x_b * m_b.repeat(1, 3, 1, 1)) + m_b.repeat(1, 3, 1, 1)
+
+        if self.semantic_w:
+            self.segmentation_model.eval()
+            return (
+                x_a,
+                x_a_recon,
+                rgb1_a,
+                x_ab1,
+                rgb1_ab,
+                x_ab1 * m_a,
+                save_m_a,
+                x_b,
+                x_b_recon,
+                rgb1_b,
+                x_ba1,
+                rgb1_ba,
+                x_ba2 * m_b,
+                save_m_b,
+            )
+        else:
+            return (
+                x_a,
+                x_a_recon,
+                x_ab1,
+                x_ab1 * m_a,
+                save_m_a,
+                x_b,
+                x_b_recon,
+                x_ba1,
+                x_ba2 * m_b,
+                save_m_b,
+            )
+
+    def sample_syn(self, x_a, x_b, m_a, m_b):
+        """ 
+        Infer the model on a batch of image
+        
+        Arguments:
+            x_a {torch.Tensor} -- batch of image from domain A
+            x_b {[type]} -- batch of image from domain B
+        
+        Returns:
+            A list of torch images -- columnwise :x_a, autoencode(x_a), x_ab_1, x_ab_2
+            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a, 
+            x_ab_1,semantic segmentation x_ab_1, x_ab_2
+        """
+        self.eval()
+
+        x_a_recon, x_b_recon, x_ba1, x_ba2, x_ab1, x_ab2 = [], [], [], [], [], []
+        x_a_augment = torch.cat([x_a, m_a], dim=1)
+        x_b_augment = torch.cat([x_b, m_b], dim=1)
+
+        for i in range(x_a.size(0)):
+            c_a = self.gen.encode(x_a[i].unsqueeze(0), 1)
+            c_b = self.gen.encode(x_b[i].unsqueeze(0), 2)
+            x_a_recon.append(self.gen.decode(c_a, m_a[i].unsqueeze(0), 1))
+            x_b_recon.append(self.gen.decode(c_b, m_b[i].unsqueeze(0), 2))
+
+            x_ba1.append(self.gen.decode(c_b, m_b[i].unsqueeze(0), 1))
+            x_ba2.append(self.gen.decode(c_b, m_b[i].unsqueeze(0), 1))
+            x_ab1.append(self.gen.decode(c_a, m_a[i].unsqueeze(0), 2))
+            x_ab2.append(self.gen.decode(c_a, m_a[i].unsqueeze(0), 2))
+
+        x_a_recon, x_b_recon = torch.cat(x_a_recon), torch.cat(x_b_recon)
+        x_ba1, x_ba2 = torch.cat(x_ba1), torch.cat(x_ba2)
+        x_ab1, x_ab2 = torch.cat(x_ab1), torch.cat(x_ab2)
+
+        if self.semantic_w:
+            rgb_a_list, rgb_b_list, rgb_ab_list, rgb_ba_list = [], [], [], []
+
+            for i in range(x_a.size(0)):
+
+                # Inference semantic segmentation on original images
+                im_a = (x_a[i].squeeze() + 1) / 2.0
+                im_b = (x_b[i].squeeze() + 1) / 2.0
+
+                input_transformed_a = seg_transform()(im_a).unsqueeze(0)
+                input_transformed_b = seg_transform()(im_b).unsqueeze(0)
+                output_a = self.segmentation_model(input_transformed_a).squeeze().max(0)[1]
+                output_b = self.segmentation_model(input_transformed_b).squeeze().max(0)[1]
+
+                rgb_a = decode_segmap(output_a.cpu().numpy())
+                rgb_b = decode_segmap(output_b.cpu().numpy())
+                rgb_a = Image.fromarray(rgb_a).resize((x_a.size(3), x_a.size(3)))
+                rgb_b = Image.fromarray(rgb_b).resize((x_a.size(3), x_a.size(3)))
+
+                rgb_a_list.append(transforms.ToTensor()(rgb_a).unsqueeze(0))
+                rgb_b_list.append(transforms.ToTensor()(rgb_b).unsqueeze(0))
+
+                # Inference semantic segmentation on fake images
+                image_ab = (x_ab1[i].squeeze() + 1) / 2.0
+                image_ba = (x_ba1[i].squeeze() + 1) / 2.0
+
+                input_transformed_ab = seg_transform()(image_ab).unsqueeze(0).to("cuda")
+                input_transformed_ba = seg_transform()(image_ba).unsqueeze(0).to("cuda")
+
+                output_ab = self.segmentation_model(input_transformed_ab).squeeze().max(0)[1]
+                output_ba = self.segmentation_model(input_transformed_ba).squeeze().max(0)[1]
 
                 rgb_ab = decode_segmap(output_ab.cpu().numpy())
                 rgb_ba = decode_segmap(output_ba.cpu().numpy())
@@ -818,217 +956,8 @@ class MUNIT_Trainer(nn.Module):
             )
         else:
             return x_a, x_a_recon, x_ab1, x_ab2, x_b, x_b_recon, x_ba1, x_ba2
-        
-    def sample_syn(self, x_a, x_b):
-        """ 
-        Infer the model on a batch of image
-        
-        Arguments:
-            x_a {torch.Tensor} -- batch of image from domain A
-            x_b {[type]} -- batch of image from domain B
-        
-        Returns:
-            A list of torch images -- columnwise :x_a, autoencode(x_a), x_ab_1, x_ab_2
-            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a, 
-            x_ab_1,semantic segmentation x_ab_1, x_ab_2
-        """
-        self.eval()
-        s_a1 = Variable(self.s_a)
-        s_b1 = Variable(self.s_b)
-        s_a2 = Variable(torch.randn(x_a.size(0), self.style_dim, 1, 1).cuda())
-        s_b2 = Variable(torch.randn(x_b.size(0), self.style_dim, 1, 1).cuda())
-        x_a_recon, x_b_recon, x_ba1, x_ba2, x_ab1, x_ab2 = [], [], [], [], [], []
 
-        if self.gen_state == 0:
-            for i in range(x_a.size(0)):
-                c_a, s_a_fake = self.gen_a.encode(x_a[i].unsqueeze(0))
-                c_b, s_b_fake = self.gen_b.encode(x_b[i].unsqueeze(0))
-                x_a_recon.append(self.gen_a.decode(c_a, s_a_fake))
-                x_b_recon.append(self.gen_b.decode(c_b, s_b_fake))
-                if self.guided == 0:
-                    x_ba1.append(self.gen_a.decode(c_b, s_a1[i].unsqueeze(0)))
-                    x_ba2.append(self.gen_a.decode(c_b, s_a2[i].unsqueeze(0)))
-                    x_ab1.append(self.gen_b.decode(c_a, s_b1[i].unsqueeze(0)))
-                    x_ab2.append(self.gen_b.decode(c_a, s_b2[i].unsqueeze(0)))
-                elif self.guided == 1:
-                    x_ba1.append(
-                        self.gen_a.decode(c_b, s_a_fake)
-                    )  # s_a1[i].unsqueeze(0)))
-                    x_ba2.append(
-                        self.gen_a.decode(c_b, s_a_fake)
-                    )  # s_a2[i].unsqueeze(0)))
-                    x_ab1.append(
-                        self.gen_b.decode(c_a, s_b_fake)
-                    )  # s_b1[i].unsqueeze(0)))
-                    x_ab2.append(
-                        self.gen_b.decode(c_a, s_b_fake)
-                    )  # s_b2[i].unsqueeze(0)))
-                else:
-                    print("self.guided unknown value:", self.guided)
-
-        elif self.gen_state == 1:
-            for i in range(x_a.size(0)):
-                c_a, s_a_fake = self.gen.encode(x_a[i].unsqueeze(0), 1)
-                c_b, s_b_fake = self.gen.encode(x_b[i].unsqueeze(0), 2)
-                x_a_recon.append(self.gen.decode(c_a, s_a_fake, 1))
-                x_b_recon.append(self.gen.decode(c_b, s_b_fake, 2))
-                if self.guided == 0:
-                    x_ba1.append(self.gen.decode(c_b, s_a1[i].unsqueeze(0), 1))
-                    x_ba2.append(self.gen.decode(c_b, s_a2[i].unsqueeze(0), 1))
-                    x_ab1.append(self.gen.decode(c_a, s_b1[i].unsqueeze(0), 2))
-                    x_ab2.append(self.gen.decode(c_a, s_b2[i].unsqueeze(0), 2))
-                elif self.guided == 1:
-                    x_ba1.append(
-                        self.gen.decode(c_b, s_a_fake, 1)
-                    )  # s_a1[i].unsqueeze(0)))
-                    x_ba2.append(
-                        self.gen.decode(c_b, s_a_fake, 1)
-                    )  # s_a2[i].unsqueeze(0)))
-                    x_ab1.append(
-                        self.gen.decode(c_a, s_b_fake, 2)
-                    )  # s_b1[i].unsqueeze(0)))
-                    x_ab2.append(
-                        self.gen.decode(c_a, s_b_fake, 2)
-                    )  # s_b2[i].unsqueeze(0)))
-                else:
-                    print("self.guided unknown value:", self.guided)
-
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
-
-        x_a_recon, x_b_recon = torch.cat(x_a_recon), torch.cat(x_b_recon)
-        x_ba1, x_ba2 = torch.cat(x_ba1), torch.cat(x_ba2)
-        x_ab1, x_ab2 = torch.cat(x_ab1), torch.cat(x_ab2)
-
-        if self.semantic_w:
-            rgb_a_list, rgb_b_list, rgb_ab_list, rgb_ba_list = [], [], [], []
-
-            for i in range(x_a.size(0)):
-
-                # Inference semantic segmentation on original images
-                im_a = (x_a[i].squeeze() + 1) / 2.0
-                im_b = (x_b[i].squeeze() + 1) / 2.0
-
-                input_transformed_a = seg_transform()(im_a).unsqueeze(0)
-                input_transformed_b = seg_transform()(im_b).unsqueeze(0)
-                output_a = (
-                    self.segmentation_model(input_transformed_a).squeeze().max(0)[1]
-                )
-                output_b = (
-                    self.segmentation_model(input_transformed_b).squeeze().max(0)[1]
-                )
-
-                rgb_a = decode_segmap(output_a.cpu().numpy())
-                rgb_b = decode_segmap(output_b.cpu().numpy())
-                rgb_a = Image.fromarray(rgb_a).resize((x_a.size(3), x_a.size(3)))
-                rgb_b = Image.fromarray(rgb_b).resize((x_a.size(3), x_a.size(3)))
-
-                rgb_a_list.append(transforms.ToTensor()(rgb_a).unsqueeze(0))
-                rgb_b_list.append(transforms.ToTensor()(rgb_b).unsqueeze(0))
-
-                # Inference semantic segmentation on fake images
-                image_ab = (x_ab1[i].squeeze() + 1) / 2.0
-                image_ba = (x_ba1[i].squeeze() + 1) / 2.0
-
-                input_transformed_ab = seg_transform()(image_ab).unsqueeze(0).to("cuda")
-                input_transformed_ba = seg_transform()(image_ba).unsqueeze(0).to("cuda")
-
-                output_ab = (
-                    self.segmentation_model(input_transformed_ab).squeeze().max(0)[1]
-                )
-                output_ba = (
-                    self.segmentation_model(input_transformed_ba).squeeze().max(0)[1]
-                )
-
-                rgb_ab = decode_segmap(output_ab.cpu().numpy())
-                rgb_ba = decode_segmap(output_ba.cpu().numpy())
-
-                rgb_ab = Image.fromarray(rgb_ab).resize((x_a.size(3), x_a.size(3)))
-                rgb_ba = Image.fromarray(rgb_ba).resize((x_a.size(3), x_a.size(3)))
-
-                rgb_ab_list.append(transforms.ToTensor()(rgb_ab).unsqueeze(0))
-                rgb_ba_list.append(transforms.ToTensor()(rgb_ba).unsqueeze(0))
-
-            rgb1_a, rgb1_b, rgb1_ab, rgb1_ba = (
-                torch.cat(rgb_a_list).cuda(),
-                torch.cat(rgb_b_list).cuda(),
-                torch.cat(rgb_ab_list).cuda(),
-                torch.cat(rgb_ba_list).cuda(),
-            )
-
-        self.train()
-        if self.semantic_w:
-            self.segmentation_model.eval()
-            return (
-                x_a,
-                x_a_recon,
-                rgb1_a,
-                x_ab1,
-                rgb1_ab,
-                x_ab2,
-                x_b,
-                x_b_recon,
-                rgb1_b,
-                x_ba1,
-                rgb1_ba,
-                x_ba2,
-            )
-        else:
-            return x_a, x_a_recon, x_ab1, x_ab2, x_b, x_b_recon, x_ba1, x_ba2
-
-
-    def sample_fid(self, x_a, x_b):
-        """ 
-        Infer the model on a batch of image
-        
-        Arguments:
-            x_a {torch.Tensor} -- batch of image from domain A
-            x_b {[type]} -- batch of image from domain B
-        
-        Returns:
-            A list of torch images -- columnwise :x_a, autoencode(x_a), x_ab_1, x_ab_2
-            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a, 
-            x_ab_1,semantic segmentation x_ab_1, x_ab_2
-        """
-        self.eval()
-        x_ab1= []
-        
-        if self.gen_state == 0:
-            for i in range(x_a.size(0)):
-                c_a, _ = self.gen_a.encode(x_a[i].unsqueeze(0))
-                _, s_b_fake = self.gen_b.encode(x_b[i].unsqueeze(0))
-
-                if self.guided == 1:
-                    x_ab1.append(
-                        self.gen_b.decode(c_a, s_b_fake)
-                    ) 
-
-                else:
-                    print("self.guided unknown value:", self.guided)
-
-        elif self.gen_state == 1:
-            for i in range(x_a.size(0)):
-                c_a, _ = self.gen.encode(x_a[i].unsqueeze(0), 1)
-                _, s_b_fake = self.gen.encode(x_b[i].unsqueeze(0), 2)
-                if self.guided == 1:
-                    x_ab1.append(
-                        self.gen.decode(c_a, s_b_fake, 2)
-                    )
-                else:
-                    print("self.guided unknown value:", self.guided)
-
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
-            
-        x_ab1 = torch.cat(x_ab1)
-        self.train()
-        if self.semantic_w:
-            self.segmentation_model.eval()
-            
-        return x_ab1
-
-        
-    def dis_update(self, x_a, x_b, hyperparameters, comet_exp=None):
+    def dis_update(self, x_a, x_b, m_a, m_b, hyperparameters, comet_exp=None):
         """
         Update the weights of the discriminator
         
@@ -1040,49 +969,48 @@ class MUNIT_Trainer(nn.Module):
         Keyword Arguments:
             comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})        
         """
+
         self.dis_opt.zero_grad()
-        s_a = Variable(torch.randn(x_a.size(0), self.style_dim, 1, 1).cuda())
-        s_b = Variable(torch.randn(x_b.size(0), self.style_dim, 1, 1).cuda())
-        if self.gen_state == 0:
-            # encode
-            c_a, s_a_prime = self.gen_a.encode(x_a)
-            c_b, s_b_prime = self.gen_b.encode(x_b)
-            # decode (cross domain)
-            if self.guided == 0:
-                x_ba = self.gen_a.decode(c_b, s_a)
-                x_ab = self.gen_b.decode(c_a, s_b)
-            elif self.guided == 1:
-                x_ba = self.gen_a.decode(c_b, s_a_prime)
-                x_ab = self.gen_b.decode(c_a, s_b_prime)
-            else:
-                print("self.guided unknown value:", self.guided)
-        elif self.gen_state == 1:
-            # encode
-            c_a, s_a_prime = self.gen.encode(x_a, 1)
-            c_b, s_b_prime = self.gen.encode(x_b, 2)
-            # decode (cross domain)
-            if self.guided == 0:
-                x_ba = self.gen.decode(c_b, s_a, 1)
-                x_ab = self.gen.decode(c_a, s_b, 2)
-            elif self.guided == 1:
-                x_ba = self.gen.decode(c_b, s_a_prime, 1)
-                x_ab = self.gen.decode(c_a, s_b_prime, 2)
-            else:
-                print("self.guided unknown value:", self.guided)
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+
+        m_a_seg = self.merge_seg_with_mask(x_a, m_a)
+        m_b_seg = self.merge_seg_with_mask(x_b, m_b)
+
+        x_a_augment = torch.cat([x_a, m_a], dim=1)
+        x_b_augment = torch.cat([x_b, m_b], dim=1)
+        # Replace masked region with average
+
+        avg_mask_a = self.average_mask(x_a, m_a)
+        avg_mask_b = self.average_mask(x_b, m_b)
+
+        # encode
+        c_a = self.gen.encode(x_a_augment, 1)
+        c_b = self.gen.encode(x_b_augment, 2)
+        # decode (cross domain)
+        x_ba = self.gen.decode(c_b, m_b_seg, 1)
+        x_ab = self.gen.decode(c_a, m_a_seg, 2)
+
+        x_ba_augment = torch.cat([x_ba, m_b], dim=1)
+        x_ab_augment = torch.cat([x_ab, m_a], dim=1)
 
         # D loss
-        self.loss_dis_a = self.dis_a.calc_dis_loss(x_ba.detach(), x_a)
-        self.loss_dis_b = self.dis_b.calc_dis_loss(x_ab.detach(), x_b)
+        self.loss_dis_a = self.dis_a.calc_dis_loss(x_ba.detach(), x_a, comet_exp, mode="a")
+
+        self.loss_dis_a += self.dis_a_masked.calc_dis_loss(
+            x_ba * m_b.detach(), x_a * m_a, comet_exp, mode="a"
+        )
+
+        self.loss_dis_b = self.dis_b.calc_dis_loss(x_ab.detach(), x_b, comet_exp, mode="b")
+
+        self.loss_dis_b += self.dis_b_masked.calc_dis_loss(
+            x_ab * m_a.detach(), x_b * m_b, comet_exp, mode="b"
+        )
 
         self.loss_dis_total = (
-            hyperparameters["gan_w"] * self.loss_dis_a
-            + hyperparameters["gan_w"] * self.loss_dis_b
+            hyperparameters["gan_w"] * self.loss_dis_a + hyperparameters["gan_w"] * self.loss_dis_b
         )
         self.loss_dis_total.backward()
         self.dis_opt.step()
-        
+
         if comet_exp is not None:
             comet_exp.log_metric("loss_dis_b", self.loss_dis_b.cpu().detach())
             comet_exp.log_metric("loss_dis_a", self.loss_dis_a.cpu().detach())
@@ -1100,107 +1028,87 @@ class MUNIT_Trainer(nn.Module):
             comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})        
         """
         self.dann_opt.zero_grad()
-        s_a = Variable(torch.randn(x_a.size(0), self.style_dim, 1, 1).cuda())
-        s_b = Variable(torch.randn(x_b.size(0), self.style_dim, 1, 1).cuda())
-        if self.gen_state == 0:
-            # encode
-            c_a, _ = self.gen_a.encode(x_a)
-            c_b, _ = self.gen_b.encode(x_b)
-        elif self.gen_state == 1:
-            # encode
-            c_a, _ = self.gen.encode(x_a, 1)
-            c_b, _ = self.gen.encode(x_b, 2)
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+
+        # encode
+        c_a = self.gen.encode(x_a, 1)
+        c_b = self.gen.encode(x_b, 2)
 
         # domain classifier loss
         self.domain_class_loss, out_a, out_b = self.compute_domain_adv_loss(
-            c_a, c_b, compute_accuracy=True,minimize=True)
+            c_a, c_b, compute_accuracy=True, minimize=True
+        )
 
         self.domain_class_loss.backward()
         self.dann_opt.step()
-        
+
         if comet_exp is not None:
             comet_exp.log_metric("domain_class_loss", self.domain_class_loss.cpu().detach())
             comet_exp.log_metric("probability A being identified as A", out_a.cpu().detach())
             comet_exp.log_metric("probability B being identified as B", out_b.cpu().detach())
 
-    
-    def domain_classifier_sr_update(self, x_a, x_b, domain_synth, lambda_classifier, step, comet_exp=None): 
-        
+    def domain_classifier_sr_update(
+        self, x_a, x_b, m_a, m_b, domain_synth, lambda_classifier, step, comet_exp=None
+    ):
+
         self.classif_opt_sr.zero_grad()
 
-        if self.gen_state == 0:
-            # encode
-            c_a, _ = self.gen_a.encode(x_a)
-            c_b, _ = self.gen_b.encode(x_b)
+        # encode
+        c_a = self.gen.encode(x_a, 1)
+        c_b = self.gen.encode(x_b, 2)
 
-
-        elif self.gen_state == 1:
-            # encode
-            c_a, _ = self.gen.encode(x_a, 1)
-            c_b, _ = self.gen.encode(x_b ,2)
-
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
-        
-        #noise = c_a.data.new(c_a.size()).normal_(0, 1)
+        # noise = c_a.data.new(c_a.size()).normal_(0, 1)
         loss = self.compute_classifier_sr_loss(c_a.detach(), c_b.detach(), domain_synth, fool=False)
         loss = lambda_classifier * loss
         loss.backward()
         self.classif_opt_sr.step()
-        
+
         if comet_exp is not None:
             comet_exp.log_metric("loss_classifier_sr", loss.cpu().detach(), step=step)
-            
-            
-    def output_domain_classifier_sr_update(self, x_ar, x_as, x_br, x_bs, hyperparameters, step, comet_exp=None): 
-        
+
+    def output_domain_classifier_sr_update(
+        self, x_ar, x_as, x_br, x_bs, hyperparameters, step, comet_exp=None
+    ):
+
         self.output_classif_opt_sr.zero_grad()
-        
-        loss = self.output_classifier_sr_b.calc_dis_loss_sr(x_bs, x_br) + self.output_classifier_sr_a.calc_dis_loss_sr(x_as, x_ar)
+
+        loss = self.output_classifier_sr_b.calc_dis_loss_sr(
+            x_bs, x_br
+        ) + self.output_classifier_sr_a.calc_dis_loss_sr(x_as, x_ar)
         loss = hyperparameters["adaptation"]["output_classifier_lambda"] * loss
         loss.backward()
-        
+
         self.output_classif_opt_sr.step()
-        
+
         if comet_exp is not None:
             comet_exp.log_metric("loss_output_classifier_sr", loss.cpu().detach(), step=step)
-        
+
     def segmentation_head_update(self, x_a, x_b, target_a, target_b, lamb, comet_exp=None):
-        
+
         self.segmentation_opt.zero_grad()
-        
-        if self.gen_state == 0:
-            # encode
-            c_a, _ = self.gen_a.encode(x_a)
-            c_b, _ = self.gen_b.encode(x_b)
-        elif self.gen_state == 1:
-            # encode
-            c_a, _ = self.gen.encode(x_a, 1)
-            c_b, _ = self.gen.encode(x_b, 2)
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+
+        # encode
+        c_a = self.gen.encode(x_a, 1)
+        c_b = self.gen.encode(x_b, 2)
 
         output_a = self.segmentation_head(c_a)
         output_b = self.segmentation_head(c_b)
-        output_a = nn.functional.interpolate(input=output_a, size=(self.newsize, self.newsize), mode="bilinear")
-        output_b = nn.functional.interpolate(input=output_b, size=(self.newsize, self.newsize), mode="bilinear")
+        output_a = nn.functional.interpolate(
+            input=output_a, size=(self.newsize, self.newsize), mode="bilinear"
+        )
+        output_b = nn.functional.interpolate(
+            input=output_b, size=(self.newsize, self.newsize), mode="bilinear"
+        )
 
-        loss1 = nn.CrossEntropyLoss()(
-               output_a, target_a.type(torch.long).squeeze(1).cuda()
-            )
-        loss2 = nn.CrossEntropyLoss()(
-               output_b, target_b.type(torch.long).squeeze(1).cuda()
-            )
-        loss = (loss1 + loss2) * lamb 
-        
+        loss1 = nn.CrossEntropyLoss()(output_a, target_a.type(torch.long).squeeze(1).cuda())
+        loss2 = nn.CrossEntropyLoss()(output_b, target_b.type(torch.long).squeeze(1).cuda())
+        loss = (loss1 + loss2) * lamb
+
         loss.backward()
         self.segmentation_opt.step()
-        
+
         if comet_exp is not None:
             comet_exp.log_metric("loss_semantic_head", loss.cpu().detach())
-        
+
     def update_learning_rate(self):
         """ 
         Update the learning rate
@@ -1226,13 +1134,8 @@ class MUNIT_Trainer(nn.Module):
         # Load generators
         last_model_name = get_model_list(checkpoint_dir, "gen")
         state_dict = torch.load(last_model_name)
-        if self.gen_state == 0:
-            self.gen_a.load_state_dict(state_dict["a"])
-            self.gen_b.load_state_dict(state_dict["b"])
-        elif self.gen_state == 1:
-            self.gen.load_state_dict(state_dict["2"])
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+
+        self.gen.load_state_dict(state_dict["2"])
 
         # Load domain classifier
         if self.domain_classif_ab == 1:
@@ -1246,6 +1149,8 @@ class MUNIT_Trainer(nn.Module):
         state_dict = torch.load(last_model_name)
         self.dis_a.load_state_dict(state_dict["a"])
         self.dis_b.load_state_dict(state_dict["b"])
+        self.dis_a_masked.load_state_dict(state_dict["a_masked"])
+        self.dis_b_masked.load_state_dict(state_dict["b_masked"])
         # Load optimizers
         state_dict = torch.load(os.path.join(checkpoint_dir, "optimizer.pt"))
         self.dis_opt.load_state_dict(state_dict["dis"])
@@ -1253,9 +1158,7 @@ class MUNIT_Trainer(nn.Module):
 
         if self.domain_classif_ab == 1:
             self.dann_opt.load_state_dict(state_dict["dann"])
-            self.dann_scheduler = get_scheduler(
-                self.dann_opt, hyperparameters, iterations
-            )
+            self.dann_scheduler = get_scheduler(self.dann_opt, hyperparameters, iterations)
         # Reinitilize schedulers
         self.dis_scheduler = get_scheduler(self.dis_opt, hyperparameters, iterations)
         self.gen_scheduler = get_scheduler(self.gen_opt, hyperparameters, iterations)
@@ -1277,21 +1180,19 @@ class MUNIT_Trainer(nn.Module):
             snapshot_dir, "domain_classifier_%08d.pt" % (iterations + 1)
         )
         opt_name = os.path.join(snapshot_dir, "optimizer.pt")
-        if self.gen_state == 0:
-            torch.save(
-                {"a": self.gen_a.state_dict(), "b": self.gen_b.state_dict()}, gen_name
-            )
-        elif self.gen_state == 1:
-            torch.save({"2": self.gen.state_dict()}, gen_name)
-        else:
-            print("self.gen_state unknown value:", self.gen_state)
+
+        torch.save({"2": self.gen.state_dict()}, gen_name)
         torch.save(
-            {"a": self.dis_a.state_dict(), "b": self.dis_b.state_dict()}, dis_name
+            {
+                "a": self.dis_a.state_dict(),
+                "b": self.dis_b.state_dict(),
+                "a_masked": self.dis_a_masked.state_dict(),
+                "b_masked": self.dis_b_masked.state_dict(),
+            },
+            dis_name,
         )
         if self.domain_classif_ab:
-            torch.save(
-                {"d": self.domain_classifier.state_dict()}, domain_classifier_name
-            )
+            torch.save({"d": self.domain_classifier.state_dict()}, domain_classifier_name)
             torch.save(
                 {
                     "gen": self.gen_opt.state_dict(),
@@ -1302,7 +1203,5 @@ class MUNIT_Trainer(nn.Module):
             )
         else:
             torch.save(
-                {"gen": self.gen_opt.state_dict(), "dis": self.dis_opt.state_dict()},
-                opt_name,
+                {"gen": self.gen_opt.state_dict(), "dis": self.dis_opt.state_dict()}, opt_name,
             )
-
