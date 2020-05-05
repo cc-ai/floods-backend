@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: floods-backend
+  namespace: ccai
+  labels:
+    app: floods-backend
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+  selector:
+    matchLabels:
+      app: floods-backend
+  template:
+    metadata:
+      labels:
+        app: floods-backend
+    spec:
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-accelerator
+                operator: In
+                values:
+                - nvidia-tesla-p100
+      volumes:
+      - name: api-climatechangeai-org-tls
+        secret:
+          secretName: api-climatechangeai-org-tls
+      containers:
+      - name: floods-backend
+        image: gcr.io/climatechangeai/floods-backend:491293ff598ab146f875eb28f4ca3aa149ff93d7
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 50m
+          limits:
+            nvidia.com/gpu: 1
+            memory: 4096Mi
+            cpu: 500m
+        readinessProbe:
+          httpGet:
+            path: /healthcheck
+            port: 443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 60
+        livenessProbe:
+          httpGet:
+            path: /healthcheck
+            port: 443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 60
+        volumeMounts:
+        - name: api-climatechangeai-org-tls
+          mountPath: /api-climatechangeai-org-tls
+          readOnly: true
+        env:
+        - name: WORKERS
+          value: "1"
+        - name: GEO_CODER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: geocoder-api-key
+              key: key
+        - name: STREET_VIEW_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: streetview-api-key
+              key: key

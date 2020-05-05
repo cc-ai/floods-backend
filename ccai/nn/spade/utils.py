@@ -20,6 +20,8 @@ import numpy as np
 import torch.nn.init as init
 import time
 from ccai.nn.munit.resnet import resnet34
+import re
+from addict import Dict
 
 # Methods
 # get_all_data_loaders          : primary data loader interface (load trainA, testA, trainB, testB)
@@ -179,7 +181,7 @@ def transform_torchVar():
     transfo = transforms.Compose(
         [
             transforms.ToPILImage(),
-            transforms.Resize(256),
+            transforms.Resize((256, 256)),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -226,7 +228,9 @@ def get_data_loader_list(
         [transforms.RandomCrop((height, width))] + transform_list if crop else transform_list
     )
     transform_list = (
-        [transforms.Resize(new_size)] + transform_list if new_size is not None else transform_list
+        [transforms.Resize((new_size, new_size))] + transform_list
+        if new_size is not None
+        else transform_list
     )
     transform_list = (
         [transforms.RandomHorizontalFlip()] + transform_list if train else transform_list
@@ -300,7 +304,7 @@ class MyDataset(Dataset):
 
         flip = False
         # Random horizontal flipping
-        if torch.rand(1) > 0.5:
+        if torch.rand(1) > 1.0:
             image = image.transpose(Image.FLIP_LEFT_RIGHT)
             flip = True
 
@@ -318,8 +322,8 @@ class MyDataset(Dataset):
             if flip == True:
                 mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
 
-            mask = mask.resize((image.width, image.height), Image.NEAREST)
-
+            # mask = mask.resize((image.width, image.height), Image.NEAREST)
+            mask = resize(mask)
             mask = F.crop(mask, i, j, h, w)
             if np.max(mask) == 1:
                 mask = to_tensor(mask) * 255
@@ -394,7 +398,7 @@ class DatasetInferenceFID(Dataset):
         """
 
         # Resize
-        resize = transforms.Resize(size=self.new_size)
+        resize = transforms.Resize(size=(self.new_size, self.new_size))
         image_a = resize(image_a)
         image_b = resize(image_b)
 
@@ -499,7 +503,7 @@ class MyDatasetSynthetic(Dataset):
             image_a, image_b, mask {Image, Image, Image} -- transformed image_a, pair image_b and mask
         """
         # Random horizontal flipping
-        if torch.rand(1) > 0.5:
+        if torch.rand(1) > 1:
             image_a = image_a.transpose(Image.FLIP_LEFT_RIGHT)
             image_b = image_b.transpose(Image.FLIP_LEFT_RIGHT)
             mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
@@ -508,13 +512,14 @@ class MyDatasetSynthetic(Dataset):
 
         # print('debugging mask transform 2 size',mask.size)
         # Resize
-        resize = transforms.Resize(size=self.new_size)
+        resize = transforms.Resize(size=(self.new_size, self.new_size))
         image_a = resize(image_a)
         image_b = resize(image_b)
         # print('dim image after resize',image.size)
 
         # Resize mask
-        mask = mask.resize((image_b.width, image_b.height), Image.NEAREST)
+        #mask = mask.resize((image_b.width, image_b.height), Image.NEAREST)
+        mask = resize(mask)
         semantic_a = semantic_a.resize((image_b.width, image_b.height), Image.NEAREST)
         semantic_b = semantic_b.resize((image_b.width, image_b.height), Image.NEAREST)
 
@@ -709,7 +714,9 @@ def get_data_loader_folder(
         [transforms.RandomCrop((height, width))] + transform_list if crop else transform_list
     )
     transform_list = (
-        [transforms.Resize(new_size)] + transform_list if new_size is not None else transform_list
+        [transforms.Resize((new_size, new_size))] + transform_list
+        if new_size is not None
+        else transform_list
     )
     transform_list = (
         [transforms.RandomHorizontalFlip()] + transform_list if train else transform_list
@@ -1334,11 +1341,11 @@ def mapping(im):
 
 # Define the encoded
 class domainClassifier(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, input_dim, dim):
         super(domainClassifier, self).__init__()
 
         self.max_pool1 = nn.MaxPool2d(2)
-        self.BasicBlock1 = BasicBlock(256, 128, True)
+        self.BasicBlock1 = BasicBlock(input_dim, 128, True)
         self.max_pool2 = nn.MaxPool2d(2)
         self.BasicBlock2 = BasicBlock(128, 64, True)
         self.avg_pool = nn.AvgPool2d((16, 16))
@@ -1399,3 +1406,39 @@ def flatten_opts(opts):
 
     p(opts, vals=values_list)
     return dict(values_list)
+
+
+def sorted_nicely( l ): 
+    """ Sort the given iterable in the way that humans expect.""" 
+    convert = lambda text: int(text) if text.isdigit() else text 
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
+
+
+
+
+def load_opts(path=None, default=None):
+    """Loads a configuration Dict from 2 files:
+    1. default files with shared values across runs and users
+    2. an overriding file with run- and user-specific values
+    Args:
+        path (pathlib.Path): where to find the overriding configuration
+            default (pathlib.Path, optional): Where to find the default opts.
+            Defaults to None. In which case it is assumed to be a default config
+            which needs processing such as setting default values for lambdas and gen
+            fields
+    Returns:
+        addict.Dict: options dictionnary, with overwritten default values
+    """
+    if default is None:
+        default_opts = Dict()
+    else:
+        with open(default, "r") as f:
+            default_opts = Dict(yaml.safe_load(f))
+
+    with open(path, "r") as f:
+        overriding_opts = Dict(yaml.safe_load(f))
+
+    default_opts.update(overriding_opts)
+
+    return default_opts

@@ -53,8 +53,7 @@ push-base-container: gcloud-auth
 	docker push $(BASE_CONTAINER_NAME):$(CONTAINER_TAG)
 
 stage-deploy:
-	yq w -i k8s/prod/deployment.yml spec.template.spec.containers[0].image $(APP_CONTAINER_NAME):$(CONTAINER_TAG)
+	yq w -i k8s/deployment.yml spec.template.spec.containers[0].image $(APP_CONTAINER_NAME):$(CONTAINER_TAG)
 
 deploy: gcloud-auth stage-deploy
-	kubectl apply -f ./k8s/prod/deployment.yml
-
+	kubectl apply -f ./k8s/deployment.yml
