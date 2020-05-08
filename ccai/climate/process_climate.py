@@ -20,13 +20,15 @@ def fetch_climate_data(address):
     shift = shift_frequency(coordinates)
     coastal = fetch_coastal(coordinates)
 
-    return water_level, shift, RP, int(flood_risk), coastal, address
+    if int(water_level) < int(coastal):
+        water_level = coastal
+
+    return water_level, shift, RP, int(flood_risk), address
 
 def fetch_water_level(coordinates, address, band=1):
     water_level = ds.sel(band=band, x=coordinates.lon, y=coordinates.lat, method='nearest').values
     water_level = water_level * 100
     water_level = int(water_level)
-
 
     if water_level < 0:
         water_level = "0"
@@ -41,7 +43,6 @@ def fetch_water_level(coordinates, address, band=1):
     return water_level, address
 
 def fetch_places(coordinates):
-
     google_places = GooglePlaces(CONFIG.STREET_VIEW_API_KEY)
 
     query_result = google_places.nearby_search(
@@ -55,6 +56,9 @@ def fetch_places(coordinates):
             place_count = place_count + 1
 
         return place.formatted_address
+
+
+
 
 
 
