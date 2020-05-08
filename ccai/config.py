@@ -7,6 +7,7 @@ import os, yaml
 from ccai.singleton import Singleton
 from ccai.nn.munit.trainer import MUNIT_Trainer as MUNIT
 from ccai.nn.spade.trainer import MUNIT_Trainer as SPADE
+from api import GEO_CODER, STREET_VIEW
 
 ################################## MODEL Hyperparameters #####################################
 FLOOD_MODEL = SPADE                                                                          #
@@ -31,8 +32,8 @@ class ConfigSingleton(Singleton):
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
-    GEO_CODER_API_KEY = "AIzaSyBDueAV41YFgKvKZ72UtTHQ3PiMuedwZ0k"
-    STREET_VIEW_API_KEY = "AIzaSyBDueAV41YFgKvKZ72UtTHQ3PiMuedwZ0k"
+    GEO_CODER_API_KEY = GEO_CODER
+    STREET_VIEW_API_KEY = STREET_VIEW
     API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
 
     def __init__(self) -> None:
@@ -48,7 +49,7 @@ class ConfigSingleton(Singleton):
                 value = os.environ.get(key, None)
 
                 if value is None:
-                    value = "AIzaSyBDueAV41YFgKvKZ72UtTHQ3PiMuedwZ0k"
+                    value = GEO_CODER
 
                 setattr(self, key, value)
 
