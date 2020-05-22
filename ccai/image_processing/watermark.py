@@ -7,7 +7,8 @@ from PIL import ImageColor
 from PIL import ImageDraw
 from PIL import ImageFont
 
-WATERMARK_TEXT = "For development use only."
+# WATERMARK_TEXT = "For development use only."
+WATERMARK_TEXT = ""
 
 
 def apply_watermark(input_image_path: str, output_image_path: str) -> None:
