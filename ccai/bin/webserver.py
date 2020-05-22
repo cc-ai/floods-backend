@@ -13,10 +13,10 @@ from ccai.climate.process_climate import fetch_climate_data
 from ccai.nn.process_model import cuda_check, model_validation, model_launch
 from ccai.config import FLOOD_MODEL, ROUTE_MODEL
 from ccai.config import CONFIG
-from ccai.nn.spade.segmentation import Resnet34_8s
+from ccai.nn.spadev2.segmentation import Resnet34_8s
 
 # MODELS Initialisation
-VALID_MODELS = ["munit","spade"]
+VALID_MODELS = ["munit","spade", "spadev2"]
 MODEL_NEW_SIZE = CONFIG.model_config["new_size"]
 MODEL = FLOOD_MODEL(CONFIG.model_config)
 MASK_MODEL = Resnet34_8s(num_classes=19)
@@ -65,7 +65,7 @@ def flood(model: str, address: str) -> Response:
                 "value": flood_risk,
             },
             "shift": {
-                "title": "Frequency Shift (in %):",
+                "title": "New Frequency (in %):",
                 "value": shift,
             },
                     },

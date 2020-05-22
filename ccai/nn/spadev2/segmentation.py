@@ -3,7 +3,7 @@
 import numpy
 import torch
 import torch.nn as nn
-from ccai.nn.spade.resnet import resnet34
+from ccai.nn.spadev2.resnet import resnet34
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
