@@ -13,10 +13,10 @@ from ccai.climate.process_climate import fetch_climate_data
 from ccai.nn.process_model import cuda_check, model_validation, model_launch
 from ccai.config import FLOOD_MODEL, ROUTE_MODEL
 from ccai.config import CONFIG
-from ccai.nn.spadev2.segmentation import Resnet34_8s
+from ccai.nn.model.segmentation import Resnet34_8s
 
 # MODELS Initialisation
-VALID_MODELS = ["munit","spade", "spadev2"]
+VALID_MODELS = ["model"]
 MODEL_NEW_SIZE = CONFIG.model_config["new_size"]
 MODEL = FLOOD_MODEL(CONFIG.model_config)
 MASK_MODEL = Resnet34_8s(num_classes=19)
@@ -45,7 +45,7 @@ def flood(model: str, address: str) -> Response:
     with tempfile.TemporaryDirectory() as temp_dir:
         create_temp_dir(images, temp_dir)
         path_to_gsv_image, gsv_image_response = encode_image(temp_dir)
-        path_to_flooded_image = model_launch(MODEL, ROUTE_MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
+        path_to_flooded_image = model_launch(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
         flooded_image_response  = decode_image(temp_dir, path_to_flooded_image)
 
     response = {

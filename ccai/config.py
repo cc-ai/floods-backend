@@ -5,15 +5,13 @@ bits of application configuration
 
 import os, yaml
 from ccai.singleton import Singleton
-from ccai.nn.munit.trainer import MUNIT_Trainer as MUNIT
-from ccai.nn.spade.trainer import MUNIT_Trainer as SPADE
-from ccai.nn.spadev2.trainer import MUNIT_Trainer as SPADEV2
+from ccai.nn.model.trainer import MUNIT_Trainer as MODEL
 from api import GEO_CODER, STREET_VIEW
 
 ################################## MODEL Hyperparameters #####################################
-FLOOD_MODEL = SPADEV2                                                                     #
-ROUTE_MODEL = "spadev2"                                                                        #
-FLOOD_MODE = "simple"                                                                        #
+FLOOD_MODEL = MODEL                                                                     #
+ROUTE_MODEL = "model"                                                                        #
+FLOOD_MODE = "all"                                                                        #
 FLOOD_LEVEL = 0.4                                                                            #
 RP = 50                                                                                      #
 ##############################################################################################
@@ -23,12 +21,10 @@ class ConfigSingleton(Singleton):
 
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     ################################### CONFIG Hyparameters ###################################
-    MODEL_CONFIG_FILE = os.path.join(BASE_DIR, "nn/configs/spadev2config.yaml")                 #
+    MODEL_CONFIG_FILE = os.path.join(BASE_DIR, "nn/configs/config.yaml")                      #
     MODEL_CHECKPOINT_FILE = os.path.join(BASE_DIR, "nn/configs/gen_00060000.pt")              #
-    MODEL_STYLE_FILE = os.path.join(BASE_DIR, "nn/configs/style.npy")                         #
-    MODEL_MASK_FILE = os.path.join(BASE_DIR, "nn/configs/mask.png")                           #
     MODEL_WEIGHT_FILE = os.path.join(BASE_DIR, "nn/configs/resnet_34_8s_cityscapes_best.pth") #
-    CLIMATE_DATA = "data/floodMapGL_rp50y.tif"                                                  #
+    CLIMATE_DATA = "data/floodMapGL_rp50y.tif"                                                #
     ###########################################################################################
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"

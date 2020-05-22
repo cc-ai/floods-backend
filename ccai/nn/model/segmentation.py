@@ -3,7 +3,6 @@
 import numpy
 import torch
 import torch.nn as nn
-from ccai.nn.spade.resnet import resnet34
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,6 +16,7 @@ from scipy.misc import imresize
 import argparse
 import os.path
 
+from ccai.nn.model.resnet import resnet34
 from ccai.config import CONFIG
 
 parser = argparse.ArgumentParser()
