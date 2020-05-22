@@ -7,6 +7,7 @@ from ccai.config import FLOOD_LEVEL,FLOOD_MODE, RP
 from ccai.climate.extractor import Extractor
 from ccai.climate.frequency import shift_frequency
 from ccai.climate.coastal import fetch_coastal
+from ccai.climate.historic import fetch_history
 from ccai.config import CONFIG
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -19,6 +20,7 @@ def fetch_climate_data(address, RP=RP):
     water_level, address = fetch_water_level(coordinates, address)
     shift = shift_frequency(coordinates)
     coastal = fetch_coastal(coordinates)
+    history = fetch_history(coordinates)
     # print(coordinates)
 
     if int(water_level) < int(coastal):
@@ -31,7 +33,7 @@ def fetch_climate_data(address, RP=RP):
         flood_risk = 100 / RP
         flood_risk = int(flood_risk)
 
-    return water_level, shift, RP, flood_risk, address
+    return water_level, shift, RP, flood_risk, history, address
 
 def fetch_water_level(coordinates, address, band=1):
     water_level = ds.sel(band=band, x=coordinates.lon, y=coordinates.lat, method='nearest').values
