@@ -3,8 +3,16 @@ Copyright (C) 2017 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 from comet_ml import Experiment
-from ccai.nn.spade.networks import SpadeGen, MsImageDis, VAEGen, MultiscaleDiscriminator, VGGLoss
-from ccai.nn.spade.utils import (
+from ccai.nn.model.networks import (
+    SpadeGen,
+    MsImageDis,
+    VAEGen,
+    MultiscaleDiscriminator,
+    VGGLoss,
+    FullSpadeGen,
+    TVLoss,
+)
+from ccai.nn.model.utils import (
     weights_init,
     get_model_list,
     vgg_preprocess,
@@ -18,6 +26,7 @@ from ccai.nn.spade.utils import (
     decode_segmap,
     domainClassifier,
     merge_classes,
+    normalize_batch,
 )
 from torch.autograd import Variable
 from torchvision import transforms
@@ -37,6 +46,7 @@ class MUNIT_Trainer(nn.Module):
         self.recon_mask = hyperparameters["recon_mask"] == 1
         self.dann_scheduler = None
         self.full_adaptation = hyperparameters["adaptation"]["full_adaptation"] == 1
+        self.hyperparameters = hyperparameters
         dim = hyperparameters["gen"]["dim"]
         n_downsample = hyperparameters["gen"]["n_downsample"]
         latent_dim = dim * (2 ** n_downsample)
@@ -61,54 +71,27 @@ class MUNIT_Trainer(nn.Module):
         else:
             self.use_output_classifier_sr = False
 
-        self.gen = SpadeGen(hyperparameters["input_dim_a"] + 1, hyperparameters["gen"])
+        self.gen = FullSpadeGen(
+            input_dim=hyperparameters["gen"]["dim"],
+            size=hyperparameters["new_size"],
+            batch_size=hyperparameters["batch_size"],
+            params=hyperparameters["gen"],
+        )
 
-        # Note: the "+1" is for the masks
-        if hyperparameters["dis"]["type"] == "patchgan":
-            print("Using patchgan discrminator...")
-            self.dis_a = MultiscaleDiscriminator(
-                hyperparameters["input_dim_a"], hyperparameters["dis"]
-            )  # discriminator for domain a
-            self.dis_b = MultiscaleDiscriminator(
-                hyperparameters["input_dim_b"], hyperparameters["dis"]
-            )  # discriminator for domain b
-            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
+        self.latent_size = self.hyperparameters["new_size"] // (
+            2 ** self.hyperparameters["gen"]["n_downsample"]
+        )
 
-            self.dis_a_masked = MultiscaleDiscriminator(
-                hyperparameters["input_dim_a"], hyperparameters["dis"]
-            )  # discriminator for domain a
-            self.dis_b_masked = MultiscaleDiscriminator(
-                hyperparameters["input_dim_b"], hyperparameters["dis"]
-            )  # discriminator for domain b
-            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
-
-        else:
-            self.dis_a = MsImageDis(
-                hyperparameters["input_dim_a"], hyperparameters["dis"]
-            )  # discriminator for domain a
-            self.dis_b = MsImageDis(
-                hyperparameters["input_dim_b"], hyperparameters["dis"]
-            )  # discriminator for domain b
-            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
-            self.dis_a_masked = MsImageDis(
-                hyperparameters["input_dim_a"], hyperparameters["dis"]
-            )  # discriminator for domain a
-            self.dis_b_masked = MsImageDis(
-                hyperparameters["input_dim_b"], hyperparameters["dis"]
-            )  # discriminator for domain b
-            self.instancenorm = nn.InstanceNorm2d(512, affine=False)
+        self.dis_b = MultiscaleDiscriminator(
+            hyperparameters["input_dim_b"], hyperparameters["dis"]
+        )  # discriminator for domain b
 
         # fix the noise usd in sampling
         display_size = int(hyperparameters["display_size"])
         # Setup the optimizers
         beta1 = hyperparameters["beta1"]
         beta2 = hyperparameters["beta2"]
-        dis_params = (
-            list(self.dis_a.parameters())
-            + list(self.dis_b.parameters())
-            + list(self.dis_a_masked.parameters())
-            + list(self.dis_b_masked.parameters())
-        )
+        dis_params = list(self.dis_b.parameters())
 
         gen_params = list(self.gen.parameters())
 
@@ -129,14 +112,14 @@ class MUNIT_Trainer(nn.Module):
 
         # Network weight initialization
         self.apply(weights_init(hyperparameters["init"]))
-        self.dis_a.apply(weights_init("gaussian"))
         self.dis_b.apply(weights_init("gaussian"))
-        self.dis_a_masked.apply(weights_init("gaussian"))
-        self.dis_b_masked.apply(weights_init("gaussian"))
 
         # Load VGG model if needed
         if hyperparameters["vgg_w"] > 0:
             self.criterionVGG = VGGLoss()
+
+        if hyperparameters["tv_w"] > 0:
+            self.criterionTV = TVLoss(hyperparameters["tv_w"])
 
         # Load semantic segmentation model if needed
         # if "semantic_w" in hyperparameters.keys() and hyperparameters["semantic_w"] > 0:
@@ -267,23 +250,31 @@ class MUNIT_Trainer(nn.Module):
             torch.Tensor, torch.Tensor -- Translated version of x_a in domain B, Translated version of x_b in domain A
         """
         self.eval()
-        m_a_seg = self.merge_seg_with_mask(x_a, m_a)
-        m_b_seg = self.merge_seg_with_mask(x_b, m_b)
+        # m_a_seg = self.merge_seg_with_mask(x_a, m_a)
+        # m_b_seg = self.merge_seg_with_mask(x_b, m_b)
 
-        avg_mask_a = self.average_mask(x_a, m_a)
-        avg_mask_b = self.average_mask(x_b, m_b)
+        # avg_mask_a = self.average_mask(x_a, m_a)
+        # avg_mask_b = self.average_mask(x_b, m_b)
 
         x_a_augment = torch.cat([x_a, m_a], dim=1)
-        x_b_augment = torch.cat([x_b, m_b], dim=1)
+        x_a_masked = x_a * (1.0 - m_a)
+        x_b_masked = x_b * (1.0 - m_b)
 
-        c_a = self.gen.encode(x_a_augment, 1)
-        c_b = self.gen.encode(x_b_augment, 2)
+        z = (
+            torch.empty(
+                self.hyperparameters["batch_size"],
+                self.hyperparameters["gen"]["dim"],
+                self.latent_size,
+                self.latent_size,
+            )
+            .normal_(mean=0, std=1.0)
+            .cuda()
+        )
 
-        x_ba = self.gen.decode(c_b, m_b_seg, 1)
-        x_ab = self.gen.decode(c_a, m_a_seg, 2)
+        x_ab = self.gen(z, x_a_masked)
 
         self.train()
-        return x_ab, x_ba
+        return x_ab
 
     def gen_update(
         self,
@@ -316,59 +307,29 @@ class MUNIT_Trainer(nn.Module):
         """
         self.gen_opt.zero_grad()
 
-        mask_a_seg = self.merge_seg_with_mask(x_a, mask_a)
-        mask_b_seg = self.merge_seg_with_mask(x_b, mask_b)
-
-        avg_mask_a = self.average_mask(x_a, mask_a)
-        avg_mask_b = self.average_mask(x_b, mask_b)
-
         x_a_augment = torch.cat([x_a, mask_a], dim=1)
-        x_b_augment = torch.cat([x_b, mask_b], dim=1)
-
-        # encode
-        c_a = self.gen.encode(x_a_augment, 1)
-        c_b = self.gen.encode(x_b_augment, 2)
-
+        x_a_masked = x_a * (1.0 - mask_a)
+        x_b_masked = x_b * (1.0 - mask_b)
+        z = (
+            torch.empty(
+                self.hyperparameters["batch_size"],
+                self.hyperparameters["gen"]["dim"],
+                self.latent_size,
+                self.latent_size,
+            )
+            .normal_(mean=0, std=1.0)
+            .cuda()
+        )
         # decode (within domain)
-        x_a_recon = self.gen.decode(c_a, mask_a_seg, 1)
-        x_b_recon = self.gen.decode(c_b, mask_b_seg, 2)
-
-        x_ba = self.gen.decode(c_b, mask_b_seg, 1)
-        x_ab = self.gen.decode(c_a, mask_a_seg, 2)
-
-        x_ba_augment = torch.cat([x_ba, mask_b], dim=1)
-        x_ab_augment = torch.cat([x_ab, mask_a], dim=1)
-
-        # encode again
-        c_b_recon = self.gen.encode(x_ba_augment, 1)
-        c_a_recon = self.gen.encode(x_ab_augment, 2)
-
-        # decode again (if needed)
-        x_aba = (
-            self.gen.decode(c_a_recon, mask_a_seg, 1)
-            if hyperparameters["recon_x_cyc_w"] > 0
-            else None
-        )
-        x_bab = (
-            self.gen.decode(c_b_recon, mask_b_seg, 2)
-            if hyperparameters["recon_x_cyc_w"] > 0
-            else None
-        )
+        x_ab = self.gen(z, x_a_masked)
+        x_bb = self.gen(z, x_b_masked)
 
         # reconstruction loss
         # self.loss_gen_recon_x_a = self.recon_criterion(x_a_recon, x_a * (1.0 - mask_a) + avg_mask_a)
         # self.loss_gen_recon_x_b = self.recon_criterion(x_b_recon, x_b * (1.0 - mask_b) + avg_mask_b)
 
-        self.loss_gen_recon_x_a = self.recon_criterion_mask(x_a_recon, x_a, mask_a)
-        self.loss_gen_recon_x_b = self.recon_criterion_mask(x_b_recon, x_b, mask_b)
-
         # Contex preserving loss
-        self.context_loss = self.recon_criterion_mask(
-            x_ab, x_a, mask_a
-        ) + self.recon_criterion_mask(x_ba, x_b, mask_b)
-
-        self.loss_gen_recon_c_a = self.recon_criterion(c_a_recon, c_a)
-        self.loss_gen_recon_c_b = self.recon_criterion(c_b_recon, c_b)
+        self.context_loss = self.recon_criterion_mask(x_bb, x_b, mask_b)
 
         # Synthetic reconstruction loss
         if synth:
@@ -379,63 +340,24 @@ class MUNIT_Trainer(nn.Module):
             # print('mask_alignment.shape', mask_alignment.shape)
 
         self.loss_gen_recon_synth = (
-            self.recon_criterion_mask(x_ab, x_b, 1 - mask_alignment)
-            + self.recon_criterion_mask(x_ba, x_a, 1 - mask_alignment)
-            if synth
-            else 0
+            self.recon_criterion_mask(x_ab, x_b, 1 - mask_alignment) if synth else 0
         )
-
-        if self.recon_mask:
-            self.loss_gen_cycrecon_x_a = (
-                self.recon_criterion_mask(x_aba, x_a, mask_a)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else 0
-            )
-            self.loss_gen_cycrecon_x_b = (
-                self.recon_criterion_mask(x_bab, x_b, mask_b)
-                if hyperparameters["recon_x_cyc_w"] > 0
-                else 0
-            )
-        else:
-            self.loss_gen_cycrecon_x_a = (
-                self.recon_criterion(x_aba, x_a) if hyperparameters["recon_x_cyc_w"] > 0 else 0
-            )
-            self.loss_gen_cycrecon_x_b = (
-                self.recon_criterion(x_bab, x_b) if hyperparameters["recon_x_cyc_w"] > 0 else 0
-            )
 
         # GAN loss
         # Concat masks before feeding to loss
 
-        self.loss_gen_adv_a = self.dis_a.calc_gen_loss(x_ba, x_a, comet_exp, mode="a")
+        self.loss_gen_adv_b = self.dis_b.calc_gen_loss(x_bb, x_b, comet_exp, mode="b")
 
-        self.loss_gen_adv_a += self.dis_a_masked.calc_gen_loss(
-            x_ba * mask_b, x_a * mask_a, comet_exp, mode="a"
-        )
-
-        self.loss_gen_adv_b = self.dis_b.calc_gen_loss(x_ab, x_b, comet_exp, mode="b")
-
-        self.loss_gen_adv_b += self.dis_b_masked.calc_gen_loss(
-            x_ab * mask_a, x_b * mask_b, comet_exp, mode="b"
-        )
-
-        # domain-invariant perceptual loss
-        self.loss_gen_vgg_a = (
-            self.compute_vgg_loss(x_ba, x_b, mask_b) if hyperparameters["vgg_w"] > 0 else 0
-        )
         self.loss_gen_vgg_b = (
-            self.compute_vgg_loss(x_ab, x_a, mask_a) if hyperparameters["vgg_w"] > 0 else 0
+            self.compute_vgg_loss(x_bb, x_b) if hyperparameters["vgg_w"] > 0 else 0
         )
 
-        # semantic-segmentation loss
-        self.loss_sem_seg = (
-            self.compute_semantic_seg_loss(x_a, x_ab, mask_a, semantic_gt_a)
-            + self.compute_semantic_seg_loss(x_b, x_ba, mask_b, semantic_gt_b)
-            if hyperparameters["semantic_w"] > 0
-            else 0
-        )
+        # Total Variational Loss:
+        self.loss_tv = self.criterionTV(x_bb * mask_b) if hyperparameters["tv_w"] > 0 else 0
+
         # Domain adversarial loss (c_a and c_b are swapped because we want the feature to be less informative
         # minmax (accuracy but max min loss)
+        """
         self.domain_adv_loss = (
             self.compute_domain_adv_loss(c_a, c_b, compute_accuracy=False, minimize=False)
             if hyperparameters["domain_adv_w"] > 0
@@ -447,6 +369,7 @@ class MUNIT_Trainer(nn.Module):
             if hyperparameters["adaptation"]["adv_lambda"] > 0
             else 0
         )
+        """
 
         if hyperparameters["adaptation"]["output_adv_lambda"] > 0:
             self.loss_output_classifier_sr = self.output_classifier_sr_a.calc_gen_loss_sr(
@@ -459,22 +382,14 @@ class MUNIT_Trainer(nn.Module):
 
         # total loss
         self.loss_gen_total = (
-            hyperparameters["gan_w"] * self.loss_gen_adv_a
-            + hyperparameters["gan_w"] * self.loss_gen_adv_b
-            + hyperparameters["recon_x_w"] * self.loss_gen_recon_x_a
-            + hyperparameters["recon_c_w"] * self.loss_gen_recon_c_a
-            + hyperparameters["recon_x_w"] * self.loss_gen_recon_x_b
-            + hyperparameters["recon_c_w"] * self.loss_gen_recon_c_b
-            + hyperparameters["recon_x_cyc_w"] * self.loss_gen_cycrecon_x_a
-            + hyperparameters["recon_x_cyc_w"] * self.loss_gen_cycrecon_x_b
-            + hyperparameters["vgg_w"] * self.loss_gen_vgg_a
-            + hyperparameters["vgg_w"] * self.loss_gen_vgg_b
+            +hyperparameters["gan_w"] * self.loss_gen_adv_b
             + hyperparameters["context_w"] * self.context_loss
-            + hyperparameters["semantic_w"] * self.loss_sem_seg
-            + hyperparameters["domain_adv_w"] * self.domain_adv_loss
-            + hyperparameters["recon_synth_w"] * self.loss_gen_recon_synth
-            + hyperparameters["adaptation"]["adv_lambda"] * self.loss_classifier_sr
-            + hyperparameters["adaptation"]["output_adv_lambda"] * self.loss_output_classifier_sr
+            + hyperparameters["vgg_w"] * self.loss_gen_vgg_b
+            + self.loss_tv
+            # + hyperparameters["domain_adv_w"] * self.domain_adv_loss
+            # + hyperparameters["recon_synth_w"] * self.loss_gen_recon_synth
+            # + hyperparameters["adaptation"]["adv_lambda"] * self.loss_classifier_sr
+            # + hyperparameters["adaptation"]["output_adv_lambda"] * self.loss_output_classifier_sr
         )
 
         self.loss_gen_total.backward()
@@ -482,30 +397,16 @@ class MUNIT_Trainer(nn.Module):
 
         if comet_exp is not None:
 
-            comet_exp.log_metric("loss_gen_adv_a", self.loss_gen_adv_a.cpu().detach())
             comet_exp.log_metric("loss_gen_adv_b", self.loss_gen_adv_b.cpu().detach())
-            comet_exp.log_metric("loss_gen_recon_x_a", self.loss_gen_recon_x_a.cpu().detach())
-            comet_exp.log_metric("loss_gen_recon_x_b", self.loss_gen_recon_x_b.cpu().detach())
 
-            if hyperparameters["recon_c_w"] > 0:
-                comet_exp.log_metric("loss_gen_recon_c_a", self.loss_gen_recon_c_a.cpu().detach())
-                comet_exp.log_metric("loss_gen_recon_c_b", self.loss_gen_recon_c_b.cpu().detach())
-
-            if hyperparameters["recon_x_cyc_w"] > 0:
-                comet_exp.log_metric(
-                    "loss_gen_cycrecon_x_a", self.loss_gen_cycrecon_x_a.cpu().detach()
-                )
-                comet_exp.log_metric(
-                    "loss_gen_cycrecon_x_b", self.loss_gen_cycrecon_x_b.cpu().detach()
-                )
             comet_exp.log_metric("loss_gen_total", self.loss_gen_total.cpu().detach())
 
             if hyperparameters["vgg_w"] > 0:
-                comet_exp.log_metric("loss_gen_vgg_a", self.loss_gen_vgg_a.cpu().detach())
                 comet_exp.log_metric("loss_gen_vgg_b", self.loss_gen_vgg_b.cpu().detach())
 
-            if hyperparameters["semantic_w"] > 0:
-                comet_exp.log_metric("loss_sem_seg", self.loss_sem_seg.cpu().detach())
+            if hyperparameters["tv_w"] > 0:
+                comet_exp.log_metric("tv_loss", self.loss_tv.cpu().detach())
+
             if hyperparameters["context_w"] > 0:
                 comet_exp.log_metric("context_preserve_loss", self.context_loss.cpu().detach())
             if hyperparameters["domain_adv_w"] > 0:
@@ -523,7 +424,7 @@ class MUNIT_Trainer(nn.Module):
                     "loss_output_classifier_adv_sr", self.loss_output_classifier_sr.cpu().detach()
                 )
 
-    def compute_vgg_loss(self, img, target, mask):
+    def compute_vgg_loss(self, img, target, mask=None, preprocess=True):
         """ 
         Compute the domain-invariant perceptual loss
         
@@ -535,12 +436,17 @@ class MUNIT_Trainer(nn.Module):
         Returns:
             torch.Float -- domain invariant perceptual loss
         """
-        img_vgg = vgg_preprocess(img)
-        target_vgg = vgg_preprocess(target)
+        if preprocess:
+            img_vgg = vgg_preprocess(img)
+            target_vgg = vgg_preprocess(target)
+        else:
+            img_vgg = normalize_batch(img)
+            target_vgg = normalize_batch(target)
 
         # Mask input to VGG:
-        img_vgg = img_vgg * (1.0 - mask)
-        target_vgg = target_vgg * (1.0 - mask)
+        if mask is not None:
+            img_vgg = img_vgg * (1.0 - mask)
+            target_vgg = target_vgg * (1.0 - mask)
 
         loss_G_VGG = self.criterionVGG(img_vgg, target_vgg)
 
@@ -743,117 +649,44 @@ class MUNIT_Trainer(nn.Module):
         """
 
         self.eval()
-        m_a_seg = self.merge_seg_with_mask(x_a, m_a)
-        m_b_seg = self.merge_seg_with_mask(x_b, m_b)
+        # m_a_seg = self.merge_seg_with_mask(x_a, m_a)
+        # m_b_seg = self.merge_seg_with_mask(x_b, m_b)
 
-        avg_mask_a = self.average_mask(x_a, m_a)
-        avg_mask_b = self.average_mask(x_b, m_b)
-
-        x_a_recon, x_b_recon, x_ba1, x_ba2, x_ab1, x_ab2 = [], [], [], [], [], []
+        x_a_recon, x_b_recon, x_bb, x_ba2, x_ab1, x_ab2 = [], [], [], [], [], []
 
         x_a_augment = torch.cat([x_a, m_a], dim=1)
         x_b_augment = torch.cat([x_b, m_b], dim=1)
+        x_a_masked = x_a * (1.0 - m_a)
+        x_b_masked = x_b * (1.0 - m_b)
 
         for i in range(x_a.size(0)):
-            c_a = self.gen.encode(x_a_augment[i].unsqueeze(0), 1)
-            c_b = self.gen.encode(x_b_augment[i].unsqueeze(0), 2)
-
-            x_a_recon.append(self.gen.decode(c_a, m_a_seg[i].unsqueeze(0), 1))
-            x_b_recon.append(self.gen.decode(c_b, m_b_seg[i].unsqueeze(0), 2))
-
-            x_ba1.append(self.gen.decode(c_b, m_b_seg[i].unsqueeze(0), 1))  # s_a1[i].unsqueeze(0)))
-            x_ba2.append(self.gen.decode(c_b, m_b_seg[i].unsqueeze(0), 1))  # s_a2[i].unsqueeze(0)))
-            x_ab1.append(self.gen.decode(c_a, m_a_seg[i].unsqueeze(0), 2))  # s_b1[i].unsqueeze(0)))
-            x_ab2.append(self.gen.decode(c_a, m_a_seg[i].unsqueeze(0), 2))  # s_b2[i].unsqueeze(0)))
-
-        x_a_recon, x_b_recon = torch.cat(x_a_recon), torch.cat(x_b_recon)
-        x_ba1, x_ba2 = torch.cat(x_ba1), torch.cat(x_ba2)
-        x_ab1, x_ab2 = torch.cat(x_ab1), torch.cat(x_ab2)
-
-        if self.semantic_w:
-            rgb_a_list, rgb_b_list, rgb_ab_list, rgb_ba_list = [], [], [], []
-
-            for i in range(x_a.size(0)):
-
-                # Inference semantic segmentation on original images
-                im_a = (x_a[i].squeeze() + 1) / 2.0
-                im_b = (x_b[i].squeeze() + 1) / 2.0
-
-                input_transformed_a = seg_transform()(im_a).unsqueeze(0)
-                input_transformed_b = seg_transform()(im_b).unsqueeze(0)
-                output_a = self.segmentation_model(input_transformed_a).squeeze().max(0)[1]
-                output_b = self.segmentation_model(input_transformed_b).squeeze().max(0)[1]
-
-                rgb_a = decode_segmap(output_a.cpu().numpy())
-                rgb_b = decode_segmap(output_b.cpu().numpy())
-                rgb_a = Image.fromarray(rgb_a).resize((x_a.size(3), x_a.size(3)))
-                rgb_b = Image.fromarray(rgb_b).resize((x_a.size(3), x_a.size(3)))
-
-                rgb_a_list.append(transforms.ToTensor()(rgb_a).unsqueeze(0))
-                rgb_b_list.append(transforms.ToTensor()(rgb_b).unsqueeze(0))
-
-                # Inference semantic segmentation on fake images
-                image_ab = (x_ab1[i].squeeze() + 1) / 2.0
-                image_ba = (x_ba1[i].squeeze() + 1) / 2.0
-
-                input_transformed_ab = seg_transform()(image_ab).unsqueeze(0).to("cuda")
-                input_transformed_ba = seg_transform()(image_ba).unsqueeze(0).to("cuda")
-
-                output_ab = self.segmentation_model(input_transformed_ab).squeeze().max(0)[1]
-                output_ba = self.segmentation_model(input_transformed_ba).squeeze().max(0)[1]
-
-                rgb_ab = decode_segmap(output_ab.cpu().numpy())
-                rgb_ba = decode_segmap(output_ba.cpu().numpy())
-
-                rgb_ab = Image.fromarray(rgb_ab).resize((x_a.size(3), x_a.size(3)))
-                rgb_ba = Image.fromarray(rgb_ba).resize((x_a.size(3), x_a.size(3)))
-
-                rgb_ab_list.append(transforms.ToTensor()(rgb_ab).unsqueeze(0))
-                rgb_ba_list.append(transforms.ToTensor()(rgb_ba).unsqueeze(0))
-
-            rgb1_a, rgb1_b, rgb1_ab, rgb1_ba = (
-                torch.cat(rgb_a_list).cuda(),
-                torch.cat(rgb_b_list).cuda(),
-                torch.cat(rgb_ab_list).cuda(),
-                torch.cat(rgb_ba_list).cuda(),
+            z = (
+                torch.empty(
+                    1, self.hyperparameters["gen"]["dim"], self.latent_size, self.latent_size,
+                )
+                .normal_(mean=0, std=1.0)
+                .cuda()
             )
+            x_ab1.append(self.gen(z, x_a_masked[i].unsqueeze(0)))  # s_b1[i].unsqueeze(0)))
+            x_ab2.append(self.gen(z, x_a_masked[i].unsqueeze(0)))  # s_b2[i].unsqueeze(0)))
+            x_bb.append(self.gen(z, x_b_masked[i].unsqueeze(0)))  # s_b2[i].unsqueeze(0)))
+
+        x_ab1, x_bb = torch.cat(x_ab1), torch.cat(x_bb)
 
         self.train()
         # Overlay mask onto image:
         save_m_a = x_a - (x_a * m_a.repeat(1, 3, 1, 1)) + m_a.repeat(1, 3, 1, 1)
-        save_m_b = x_b - (x_b * m_b.repeat(1, 3, 1, 1)) + m_b.repeat(1, 3, 1, 1)
 
-        if self.semantic_w:
-            self.segmentation_model.eval()
-            return (
-                x_a,
-                x_a_recon,
-                rgb1_a,
-                x_ab1,
-                rgb1_ab,
-                x_ab1 * m_a,
-                save_m_a,
-                x_b,
-                x_b_recon,
-                rgb1_b,
-                x_ba1,
-                rgb1_ba,
-                x_ba2 * m_b,
-                save_m_b,
-            )
-        else:
-            return (
-                x_a,
-                x_a_recon,
-                x_ab1,
-                x_ab1 * m_a,
-                save_m_a,
-                x_b,
-                x_b_recon,
-                x_ba1,
-                x_ba2 * m_b,
-                save_m_b,
-            )
+        return (
+            x_a,
+            x_ab1,
+            x_ab1 * m_a,
+            save_m_a,
+            x_b,
+            x_bb,
+            x_bb * m_b,
+            save_m_a,
+        )
 
     def sample_syn(self, x_a, x_b, m_a, m_b):
         """ 
@@ -971,49 +804,33 @@ class MUNIT_Trainer(nn.Module):
         """
 
         self.dis_opt.zero_grad()
-
-        m_a_seg = self.merge_seg_with_mask(x_a, m_a)
-        m_b_seg = self.merge_seg_with_mask(x_b, m_b)
+        z = (
+            torch.empty(
+                self.hyperparameters["batch_size"],
+                self.hyperparameters["gen"]["dim"],
+                self.latent_size,
+                self.latent_size,
+            )
+            .normal_(mean=0, std=1.0)
+            .cuda()
+        )
 
         x_a_augment = torch.cat([x_a, m_a], dim=1)
-        x_b_augment = torch.cat([x_b, m_b], dim=1)
+        x_a_masked = x_a * (1.0 - m_a)
+        x_b_masked = x_b * (1.0 - m_b)
+
         # Replace masked region with average
+        x_bb = self.gen(z, x_b_masked)
 
-        avg_mask_a = self.average_mask(x_a, m_a)
-        avg_mask_b = self.average_mask(x_b, m_b)
+        self.loss_dis_b = self.dis_b.calc_dis_loss(x_bb.detach(), x_b, comet_exp, mode="b")
 
-        # encode
-        c_a = self.gen.encode(x_a_augment, 1)
-        c_b = self.gen.encode(x_b_augment, 2)
-        # decode (cross domain)
-        x_ba = self.gen.decode(c_b, m_b_seg, 1)
-        x_ab = self.gen.decode(c_a, m_a_seg, 2)
-
-        x_ba_augment = torch.cat([x_ba, m_b], dim=1)
-        x_ab_augment = torch.cat([x_ab, m_a], dim=1)
-
-        # D loss
-        self.loss_dis_a = self.dis_a.calc_dis_loss(x_ba.detach(), x_a, comet_exp, mode="a")
-
-        self.loss_dis_a += self.dis_a_masked.calc_dis_loss(
-            x_ba * m_b.detach(), x_a * m_a, comet_exp, mode="a"
-        )
-
-        self.loss_dis_b = self.dis_b.calc_dis_loss(x_ab.detach(), x_b, comet_exp, mode="b")
-
-        self.loss_dis_b += self.dis_b_masked.calc_dis_loss(
-            x_ab * m_a.detach(), x_b * m_b, comet_exp, mode="b"
-        )
-
-        self.loss_dis_total = (
-            hyperparameters["gan_w"] * self.loss_dis_a + hyperparameters["gan_w"] * self.loss_dis_b
-        )
+        self.loss_dis_total = hyperparameters["gan_w"] * self.loss_dis_b
         self.loss_dis_total.backward()
         self.dis_opt.step()
 
         if comet_exp is not None:
+            # comet_exp.log_metric("loss_dis_a", self.loss_dis_a.cpu().detach())
             comet_exp.log_metric("loss_dis_b", self.loss_dis_b.cpu().detach())
-            comet_exp.log_metric("loss_dis_a", self.loss_dis_a.cpu().detach())
 
     def domain_classifier_update(self, x_a, x_b, hyperparameters, comet_exp=None):
         """
@@ -1147,10 +964,8 @@ class MUNIT_Trainer(nn.Module):
         # Load discriminators
         last_model_name = get_model_list(checkpoint_dir, "dis")
         state_dict = torch.load(last_model_name)
-        self.dis_a.load_state_dict(state_dict["a"])
         self.dis_b.load_state_dict(state_dict["b"])
-        self.dis_a_masked.load_state_dict(state_dict["a_masked"])
-        self.dis_b_masked.load_state_dict(state_dict["b_masked"])
+
         # Load optimizers
         state_dict = torch.load(os.path.join(checkpoint_dir, "optimizer.pt"))
         self.dis_opt.load_state_dict(state_dict["dis"])
@@ -1183,13 +998,7 @@ class MUNIT_Trainer(nn.Module):
 
         torch.save({"2": self.gen.state_dict()}, gen_name)
         torch.save(
-            {
-                "a": self.dis_a.state_dict(),
-                "b": self.dis_b.state_dict(),
-                "a_masked": self.dis_a_masked.state_dict(),
-                "b_masked": self.dis_b_masked.state_dict(),
-            },
-            dis_name,
+            {"b": self.dis_b.state_dict(),}, dis_name,
         )
         if self.domain_classif_ab:
             torch.save({"d": self.domain_classifier.state_dict()}, domain_classifier_name)

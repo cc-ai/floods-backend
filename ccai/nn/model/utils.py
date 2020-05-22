@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from torchvision import transforms, models
-from ccai.nn.spadev2.data  import ImageFilelist, ImageFolder
+from ccai.nn.model.data import ImageFilelist, ImageFolder
+from ccai.nn.model.resnet import resnet34
 from PIL import Image
 from torchvision.transforms import functional as F
 import torch
@@ -19,7 +20,6 @@ import yaml
 import numpy as np
 import torch.nn.init as init
 import time
-from ccai.nn.spadev2.resnet import resnet34
 import re
 from addict import Dict
 

@@ -1,6 +1,7 @@
 import torch, os, tqdm, cv2
 import matplotlib.pyplot as plt
 from scipy.misc import imresize
+from flask import jsonify
 import torchvision.utils as vutils
 from torch.autograd import Variable
 from torchvision import transforms
@@ -9,8 +10,7 @@ import numpy as np
 import cv2 as cv
 import math
 from ccai.config import CONFIG
-from ccai.nn.spade.segmentation import MyDataset
-from ccai.nn.spadev2.segmentation import MyDataset
+from ccai.nn.model.segmentation import MyDataset
 
 def cuda_check(MODEL):
     if torch.cuda.is_available():
@@ -31,102 +31,14 @@ def model_validation(ROUTE_MODEL, VALID_MODELS):
         response.status_code = 400
         return response
 
-def model_launch(MODEL, ROUTE_MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
-    if ROUTE_MODEL is "munit":
-        path_to_flooded_image = model_munit(MODEL, MODEL_NEW_SIZE, temp_dir, path_to_gsv_image)
+def model_launch(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
 
-    elif ROUTE_MODEL is "spade":
-        path_to_flooded_image = model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
-
-    elif ROUTE_MODEL is "spadev2":
-        path_to_flooded_image = model_spadev2(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
-
-    else:
-        path_to_flooded_image = model_spadev2(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
+    path_to_flooded_image = model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
 
     return path_to_flooded_image
 
-def model_munit(MODEL, MODEL_NEW_SIZE, temp_dir, path_to_gsv_image):
-    with torch.no_grad():
-
-        transform = transforms.Compose(
-            [
-                transforms.Resize(MODEL_NEW_SIZE),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            ]
-        )
-
-        image_transformed = transform(
-            Image.open(path_to_gsv_image).convert("RGB")
-        ).unsqueeze(0)
-
-        if torch.cuda.is_available():
-            image_transformed = image_transformed.cuda()
-
-        x_a = image_transformed
-        c_xa_b, _ = MODEL.gen.encode(x_a, 1)
-        content = c_xa_b
-        style_data = np.load(CONFIG.MODEL_STYLE_FILE)
-        style = torch.tensor(style_data.reshape(1, 16, 1, 1), dtype=torch.float)
-        if torch.cuda.is_available():
-            style = style.cuda()
-
-        outputs = MODEL.gen.decode(content, style, 2)
-        outputs = (outputs + 1) / 2.0
-
-        path_to_flooded_image = os.path.join(temp_dir, "output" + "{:03d}.jpg".format(0))
-        vutils.save_image(outputs.data, path_to_flooded_image, padding=0, normalize=True)
-
-    return path_to_flooded_image
 
 def model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
-    with torch.no_grad():
-
-        transform = transforms.Compose(
-            [
-                transforms.Resize((MODEL_NEW_SIZE, MODEL_NEW_SIZE)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            ]
-        )
-
-        mask_transform = transforms.Compose(
-            [transforms.Resize((MODEL_NEW_SIZE, MODEL_NEW_SIZE)), transforms.ToTensor(), ]
-        )
-
-        path_xa = path_to_gsv_image
-
-        # mask = Image.open(CONFIG.MODEL_MASK_FILE)
-
-        #DeepLab
-        model_deeplab(temp_dir, MASK_MODEL,MODEL_NEW_SIZE)
-        mask = Image.open(temp_dir + "/gsv_0.png")
-
-        # process
-        mask = Variable(mask_transform(mask).cuda())
-        mask_thresh = (torch.max(mask) - torch.min(mask)) / 2.0
-        mask = (mask > mask_thresh).float()
-        mask = mask[0].unsqueeze(0).unsqueeze(0)
-
-        # Load and transform the non_flooded image
-        x_a = Variable(transform(Image.open(path_xa).convert("RGB")).unsqueeze(0).cuda())
-        x_a_augment = torch.cat([x_a, mask], dim=1)
-        c_a = MODEL.gen.encode(x_a_augment, 1)
-
-        # Perform cross domain translation
-        x_ab = MODEL.gen.decode(c_a, mask, 2)
-
-        # Denormalize .Normalize(0.5,0.5,0.5)...
-        outputs = (x_ab + 1) / 2.0
-
-        # Define output path
-        path_to_flooded_image = os.path.join(temp_dir, "output" + "{:03d}.jpg".format(0))
-        vutils.save_image(outputs.data, path_to_flooded_image, padding=0, normalize=True)
-
-        return path_to_flooded_image
-
-def model_spadev2(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
     with torch.no_grad():
         # Define the transform to infer with the generator
         transform = transforms.Compose(
