@@ -113,10 +113,6 @@ venv.bak/
 .mypy_cache/
 
 
-ccai/climate/data/world_50.tif
-ccai/nn/munit/checkpoints/roadSegmentation/resnet_34_8s_cityscapes_best.pth
-ccai/nn/munit/checkpoints/gen_00320000.pt
-
 ccai/climate/data/*.tif
 ccai/climate/data/*.nc
 ccai/nn/configs/

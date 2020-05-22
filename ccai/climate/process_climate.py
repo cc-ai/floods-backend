@@ -13,17 +13,25 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 ds = xr.open_rasterio(os.path.join(BASE_DIR, CONFIG.CLIMATE_DATA))
 flood_risk = 100/RP
 
-def fetch_climate_data(address):
+def fetch_climate_data(address, RP=RP):
     extractor = Extractor()
     coordinates = extractor.coordinates_from_address(address)
     water_level, address = fetch_water_level(coordinates, address)
     shift = shift_frequency(coordinates)
     coastal = fetch_coastal(coordinates)
+    # print(coordinates)
 
     if int(water_level) < int(coastal):
         water_level = coastal
+        shift = "N/A"
+        RP = "N/A"
+        flood_risk = "N/A"
 
-    return water_level, shift, RP, int(flood_risk), address
+    else:
+        flood_risk = 100 / RP
+        flood_risk = int(flood_risk)
+
+    return water_level, shift, RP, flood_risk, address
 
 def fetch_water_level(coordinates, address, band=1):
     water_level = ds.sel(band=band, x=coordinates.lon, y=coordinates.lat, method='nearest').values
@@ -32,10 +40,11 @@ def fetch_water_level(coordinates, address, band=1):
 
     if water_level < 0:
         water_level = "0"
-        address = fetch_places(coordinates)
+        # address = fetch_places(coordinates)
 
     elif FLOOD_LEVEL > water_level > 0:
-        address = fetch_places(coordinates)
+        pass
+        # address = fetch_places(coordinates)
 
     else:
         pass

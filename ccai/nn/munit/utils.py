@@ -934,9 +934,9 @@ class Resnet34_8s(nn.Module):
 
         x = self.resnet34_8s(x)
 
-        # x = nn.functional.upsample_bilinear(input=x, size=input_spatial_dim) 0.3
-        x = nn.functional.interpolate(input=x, size=input_spatial_dim, mode="bilinear")
-
+        x = nn.functional.upsample_bilinear(input=x, size=input_spatial_dim)
+        # x = nn.functional.interpolate(input=x, size=input_spatial_dim, mode="bilinear")
+        print("#######################################################################################")
         return x
 
 

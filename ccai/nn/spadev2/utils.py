@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from torchvision import transforms, models
-from ccai.nn.spade.data import ImageFilelist, ImageFolder
+from ccai.nn.spadev2.data  import ImageFilelist, ImageFolder
 from PIL import Image
 from torchvision.transforms import functional as F
 import torch
@@ -19,7 +19,7 @@ import yaml
 import numpy as np
 import torch.nn.init as init
 import time
-from ccai.nn.spade.resnet import resnet34
+from ccai.nn.spadev2.resnet import resnet34
 import re
 from addict import Dict
 
@@ -273,6 +273,124 @@ def default_txt_reader(flist):
     return imlist
 
 
+class MyDatasetRect(Dataset):
+    """
+    Dataset class for images and masks filenames inputs
+    """
+
+    def __init__(self, file_list, mask_list, rect_list, new_size, height, width):
+        self.image_paths = default_txt_reader(file_list)
+        if mask_list is not None:
+            self.target_paths = default_txt_reader(mask_list)
+            print("Segmentation mask will be used")
+        else:
+            self.target_paths = None
+            print("No segmentation mask")
+        if rect_list is not None:
+            self.rect_paths = default_txt_reader(rect_list)
+            print("Rectangles will be used")
+        else:
+            self.rect_paths = None
+            print("No rectangles")
+
+        self.new_size = new_size
+        self.height = height
+        self.width = width
+
+    def transform(self, image, mask, rect):
+        """Apply transformations to image and corresponding mask.
+        Transformations applied are:
+            random horizontal flipping, resizing, random cropping and normalizing
+        Arguments:
+            image {Image} -- Image
+            mask {Image} -- Mask
+
+        Returns:
+            image, mask {Image, Image} -- transformed image and mask
+        """
+
+        flip = False
+        # Random horizontal flipping
+        if torch.rand(1) > 1.0:
+            image = image.transpose(Image.FLIP_LEFT_RIGHT)
+            flip = True
+
+        # print('debugging mask transform 2 size',mask.size)
+        # Resize
+        resize = transforms.Resize(size=(self.new_size, self.new_size))
+        image = resize(image)
+        to_tensor = transforms.ToTensor()
+        # Random crop
+        i, j, h, w = transforms.RandomCrop.get_params(image, output_size=(self.height, self.width))
+        image = F.crop(image, i, j, h, w)
+
+        if type(mask) is not torch.Tensor:
+            # Resize mask
+            if flip == True:
+                mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
+
+            # mask = mask.resize((image.width, image.height), Image.NEAREST)
+            mask = resize(mask)
+            mask = F.crop(mask, i, j, h, w)
+            if np.max(mask) == 1:
+                mask = to_tensor(mask) * 255
+            else:
+                mask = to_tensor(mask)
+
+        # Make mask binary
+        mask_thresh = (torch.max(mask) - torch.min(mask)) / 2.0
+        mask = (mask > mask_thresh).float()
+
+        # Transform to tensor
+
+        image = to_tensor(image)
+
+        # Process rectangle
+        rect = F.crop(rect, i, j, h, w)
+        rect = to_tensor(rect)
+
+        # print('debugging mask transform 5 size',mask.size)
+        # Normalize
+        normalizer = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        image = normalizer(image)
+        return image, mask, rect
+
+    def __getitem__(self, index):
+        """Get transformed image and mask at index index in the dataset
+
+        Arguments:
+            index {int} -- index at which to get image, mask pair
+
+        Returns:
+            image, mask pair
+        """
+
+        image = Image.open(self.image_paths[index][0]).convert("RGB")
+
+        if self.target_paths is not None:
+            mask = Image.open(self.target_paths[index][0])
+
+        else:
+            mask = torch.tensor([])
+
+        if self.rect_paths is not None:
+            rect = Image.open(self.rect_paths[index][0])
+        else:
+            rect = torch.tensor([])
+
+        x, y, z = self.transform(image, mask, rect)
+        y = y[0].unsqueeze(0)
+        return x, y, z
+
+    def __len__(self):
+        """return dataset length
+
+        Returns:
+            int -- dataset length
+        """
+        return len(self.image_paths)
+
+
 class MyDataset(Dataset):
     """
     Dataset class for images and masks filenames inputs
@@ -498,7 +616,6 @@ class MyDatasetSynthetic(Dataset):
             image_a {Image} -- Image
             image_b {Image} -- Image
             mask {Image} -- Mask
-
         Returns:
             image_a, image_b, mask {Image, Image, Image} -- transformed image_a, pair image_b and mask
         """
@@ -518,7 +635,7 @@ class MyDatasetSynthetic(Dataset):
         # print('dim image after resize',image.size)
 
         # Resize mask
-        #mask = mask.resize((image_b.width, image_b.height), Image.NEAREST)
+        # mask = mask.resize((image_b.width, image_b.height), Image.NEAREST)
         mask = resize(mask)
         semantic_a = semantic_a.resize((image_b.width, image_b.height), Image.NEAREST)
         semantic_b = semantic_b.resize((image_b.width, image_b.height), Image.NEAREST)
@@ -565,10 +682,8 @@ class MyDatasetSynthetic(Dataset):
 
     def __getitem__(self, index):
         """Get transformed image and mask at index index in the dataset
-
         Arguments:
             index {int} -- index at which to get image, mask pair
-
         Returns:
             image_a, image_b, mask pair
         """
@@ -584,7 +699,6 @@ class MyDatasetSynthetic(Dataset):
 
     def __len__(self):
         """return dataset length
-
         Returns:
             int -- dataset length
         """
@@ -671,6 +785,49 @@ def get_data_loader_mask_and_im(
         loader -- data loader with transformed dataset
     """
     dataset = MyDataset(file_list, mask_list, new_size, height, width)
+    loader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        shuffle=train,
+        drop_last=True,
+        num_workers=num_workers,
+    )
+    return loader
+
+
+def get_data_loader_mask_and_im_and_rect(
+    file_list,
+    mask_list,
+    rect_list,
+    batch_size,
+    train,
+    new_size=None,
+    height=256,
+    width=256,
+    num_workers=4,
+    crop=True,
+):
+    """
+    Masks and images lists-based data loader with transformations
+    (horizontal flip, resizing, random crop, normalization are handled)
+
+    Arguments:
+        file_list {str list} -- list of images filenames
+        mask_list {str list} -- list of masks filenames
+        batch_size {int} -- batch size
+        train {bool} -- training
+
+    Keyword Arguments:
+        new_size {int} -- parameter for resizing (default: {None})
+        height {int} -- dimension for random cropping (default: {256})
+        width {int} -- dimension for random cropping (default: {256})
+        num_workers {int} -- number of workers (default: {4})
+        crop {bool} -- crop(default: {True})
+
+    Returns:
+        loader -- data loader with transformed dataset
+    """
+    dataset = MyDatasetRect(file_list, mask_list, rect_list, new_size, height, width)
     loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
@@ -944,6 +1101,7 @@ class Resnet34_8s(nn.Module):
         x = nn.functional.upsample_bilinear(input=x, size=input_spatial_dim)
         # x = nn.functional.interpolate(input=x, size=input_spatial_dim, mode="bilinear")
         print("#######################################################################################")
+
         return x
 
 
@@ -1348,7 +1506,7 @@ class domainClassifier(nn.Module):
         self.BasicBlock1 = BasicBlock(input_dim, 128, True)
         self.max_pool2 = nn.MaxPool2d(2)
         self.BasicBlock2 = BasicBlock(128, 64, True)
-        self.avg_pool = nn.AvgPool2d((16, 16))
+        self.avg_pool = nn.AvgPool2d((8, 8))
         self.fc = nn.Linear(64, 1)
         self.output_dim = dim
 
@@ -1408,13 +1566,11 @@ def flatten_opts(opts):
     return dict(values_list)
 
 
-def sorted_nicely( l ): 
-    """ Sort the given iterable in the way that humans expect.""" 
-    convert = lambda text: int(text) if text.isdigit() else text 
-    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
-    return sorted(l, key = alphanum_key)
-
-
+def sorted_nicely(l):
+    """ Sort the given iterable in the way that humans expect."""
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in re.split("([0-9]+)", key)]
+    return sorted(l, key=alphanum_key)
 
 
 def load_opts(path=None, default=None):
@@ -1442,3 +1598,35 @@ def load_opts(path=None, default=None):
     default_opts.update(overriding_opts)
 
     return default_opts
+
+
+def tv_loss(img, tv_weight):
+    """
+    Compute total variation loss.
+    Inputs:
+    - img: PyTorch Variable of shape (1, 3, H, W) holding an input image.
+    - tv_weight: Scalar giving the weight w_t to use for the TV loss.
+    Returns:
+    - loss: PyTorch Variable holding a scalar giving the total variation loss
+      for img weighted by tv_weight.
+    """
+    w_variance = torch.sum(torch.pow(img[:, :, :, :-1] - img[:, :, :, 1:], 2))
+    h_variance = torch.sum(torch.pow(img[:, :, :-1, :] - img[:, :, 1:, :], 2))
+    loss = tv_weight * (h_variance + w_variance)
+    return loss
+
+
+def normalize_batch(batch):
+    # normalize using imagenet mean and std
+    mean = batch.new_tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
+    std = batch.new_tensor([0.229, 0.224, 0.225]).view(-1, 1, 1)
+    # batch = batch.div_(255.0)
+    return (batch - mean) / std
+
+
+def gram_matrix(y):
+    (b, ch, h, w) = y.size()
+    features = y.view(b, ch, w * h)
+    features_t = features.transpose(1, 2)
+    gram = features.bmm(features_t) / (ch * h * w)
+    return gram
