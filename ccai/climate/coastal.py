@@ -8,7 +8,6 @@ def fetch_coastal(coordinates):
     userlat = coordinates.lat
     userlon = coordinates.lon
 
-
     if userlat > 0:
         V_hemisphere = 'N'
     else:

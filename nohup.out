@@ -585,3 +585,159 @@ Traceback (most recent call last):
   File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/torch/serialization.py", line 549, in _load
     deserialized_objects[key]._set_from_file(f, offset, f_should_read_directly)
 KeyboardInterrupt
+Traceback (most recent call last):
+  File "/usr/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/usr/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/home/ardeljas/floods-backend/ccai/bin/webserver.py", line 7, in <module>
+    import os, tempfile, torch
+ModuleNotFoundError: No module named 'torch'
+ * Serving Flask app "webserver" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+0it [00:00, ?it/s]1it [00:00,  2.10it/s]
+/home/ardeljas/env/ccai/lib/python3.6/site-packages/torch/nn/modules/upsampling.py:122: UserWarning: nn.Upsampling is deprecated. Use nn.functional.interpolate instead.
+  warnings.warn("nn.Upsampling is deprecated. Use nn.functional.interpolate instead.")
+173.176.56.172 - - [11/May/2020 16:24:17] "GET /flood/munit/613%20Chemin%20du%20Fer%20à%20Cheval,%20Gatineau,%20QC%20J8M%201L8,%20Canada?0.07426406213847403 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.64it/s]
+173.176.56.172 - - [11/May/2020 16:24:29] "GET /flood/munit/613%20Chemin%20du%20Fer%20à%20Cheval,%20Gatineau,%20QC%20J8M%201L8,%20Canada?0.4248191787159197 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.91it/s]
+173.176.56.172 - - [11/May/2020 16:24:39] "GET /flood/munit/613%20Chemin%20du%20Fer%20à%20Cheval,%20Gatineau,%20QC%20J8M%201L8,%20Canada?0.38925290795690337 HTTP/1.1" 200 -
+ * Serving Flask app "webserver" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+0it [00:00, ?it/s]1it [00:00,  5.69it/s]
+/home/ardeljas/env/ccai/lib/python3.6/site-packages/torch/nn/modules/upsampling.py:122: UserWarning: nn.Upsampling is deprecated. Use nn.functional.interpolate instead.
+  warnings.warn("nn.Upsampling is deprecated. Use nn.functional.interpolate instead.")
+173.176.56.172 - - [21/May/2020 18:46:25] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.6562267518244551 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.83it/s]
+173.176.56.172 - - [21/May/2020 18:47:00] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.13472700221914558 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.63it/s]
+173.176.56.172 - - [21/May/2020 18:52:13] "GET /flood/munit/188-204%20Boulevard%20de%20l'Aéroport?0.18954451330082978 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.62it/s]
+173.176.56.172 - - [21/May/2020 18:52:34] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.042249384199884554 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.80it/s]
+173.176.56.172 - - [21/May/2020 18:52:35] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.3876635430818707 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.11it/s]
+173.176.56.172 - - [21/May/2020 18:52:51] "GET /flood/munit/Autoroute%20Félix-Leclerc,%20Sainte-Anne-de-la-Pérade,%20QC%20G0X%202J0,%20Canada?0.40619331164822037 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.98it/s]
+173.176.56.172 - - [21/May/2020 18:52:55] "GET /flood/munit/Autoroute%20Félix-Leclerc,%20Sainte-Anne-de-la-Pérade,%20QC%20G0X%202J0,%20Canada?0.9012961951745544 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.17it/s]
+96.255.19.202 - - [21/May/2020 18:57:33] "GET /flood/munit/Avenue%20Wiseman,%20Outremont,%20QC,%20Canada?0.46211668377368365 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.21it/s]
+96.255.19.202 - - [21/May/2020 18:57:57] "GET /flood/munit/8%20Avenue%20Wiseman,%20Outremont,%20Montreal,%20QC,%20Canada?0.25971967093737325 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.84it/s]
+96.255.19.202 - - [21/May/2020 18:58:26] "GET /flood/munit/1293%20Boulevard%20Hurtubise,%20Gatineau,%20QC%20J8P%207C2,%20Canada?0.9191130788377755 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.87it/s]
+96.255.19.202 - - [21/May/2020 18:58:28] "GET /flood/munit/1293%20Boulevard%20Hurtubise,%20Gatineau,%20QC%20J8P%207C2,%20Canada?0.7227509409919428 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.67it/s]
+96.255.19.202 - - [21/May/2020 18:58:58] "GET /flood/munit/2%20Chemin%20Mongeon,%20Gatineau,%20QC%20J8R%203Z3,%20Canada?0.27065270233187344 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.72it/s]
+96.255.19.202 - - [21/May/2020 18:59:01] "GET /flood/munit/2%20Chemin%20Mongeon,%20Gatineau,%20QC%20J8R%203Z3,%20Canada?0.5557184838996665 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.95it/s]
+96.255.19.202 - - [21/May/2020 18:59:14] "GET /flood/munit/188-204%20Boulevard%20de%20l'Aéroport?0.7802568628817248 HTTP/1.1" 200 -
+[2020-05-21 18:59:24,697] ERROR in app: Exception on /flood/munit/911 4e Rang O, Saint-Ambroise-de-Kildare, QC J0K 1C0, Canada [GET]
+Traceback (most recent call last):
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask/app.py", line 2311, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask/app.py", line 1834, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask_cors/extension.py", line 161, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask/app.py", line 1737, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask/_compat.py", line 36, in reraise
+    raise value
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask/app.py", line 1832, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/ardeljas/env/ccai/lib/python3.6/site-packages/flask/app.py", line 1818, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/ardeljas/floods-backend/ccai/bin/webserver.py", line 46, in flood
+    create_temp_dir(images, temp_dir)
+  File "/home/ardeljas/floods-backend/ccai/image_processing/process_image.py", line 10, in create_temp_dir
+    images.download_links(temp_dir)
+AttributeError: 'Response' object has no attribute 'download_links'
+96.255.19.202 - - [21/May/2020 18:59:24] "GET /flood/munit/911%204e%20Rang%20O,%20Saint-Ambroise-de-Kildare,%20QC%20J0K%201C0,%20Canada?0.9659554232773166 HTTP/1.1" 500 -
+0it [00:00, ?it/s]1it [00:00,  6.45it/s]
+96.255.19.202 - - [21/May/2020 18:59:35] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.4308123355006004 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.84it/s]
+173.176.56.172 - - [21/May/2020 19:04:21] "GET /flood/munit/1387%20Boulevard%20Hurtubise,%20Gatineau,%20QC%20J8P%207C2,%20Canada?0.3858680959916534 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.81it/s]
+96.127.214.190 - - [21/May/2020 19:05:56] "GET /flood/munit/2%20Chemin%20Mongeon,%20Gatineau,%20QC%20J8R%203Z3,%20Canada?0.3203401152848968 HTTP/1.1" 200 -
+ * Serving Flask app "webserver" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+0it [00:00, ?it/s]1it [00:00,  5.71it/s]
+/home/ardeljas/env/ccai/lib/python3.6/site-packages/torch/nn/modules/upsampling.py:122: UserWarning: nn.Upsampling is deprecated. Use nn.functional.interpolate instead.
+  warnings.warn("nn.Upsampling is deprecated. Use nn.functional.interpolate instead.")
+173.176.56.172 - - [21/May/2020 19:12:37] "GET /flood/munit/6666%20Rue%20Saint-Urbain,%20Montreal,%20QC,%20Canada?0.5310505919618786 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.63it/s]
+96.127.214.190 - - [21/May/2020 19:13:22] "GET /flood/munit/2%20Chemin%20Mongeon,%20Gatineau,%20QC%20J8R%203Z3,%20Canada?0.8324488444012001 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.88it/s]
+96.127.214.190 - - [21/May/2020 19:13:38] "GET /flood/munit/5593%20Place%20de%20Jumonville,%20Montreal,%20QC,%20Canada?0.9278136580047549 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.22it/s]
+173.176.56.172 - - [21/May/2020 19:14:04] "GET /flood/munit/5593%20Place%20de%20Jumonville,%20Montreal,%20QC,%20Canada?0.29488723392416394 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.65it/s]
+96.127.214.190 - - [21/May/2020 19:14:07] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.43933779179026256 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.17it/s]
+96.127.214.190 - - [21/May/2020 19:14:21] "GET /flood/munit/5593%20Place%20de%20Jumonville,%20Montreal,%20QC,%20Canada?0.48581030799493763 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.69it/s]
+96.127.214.190 - - [21/May/2020 19:17:02] "GET /flood/munit/1344%20Mont%20Royal%20Boulevard,%20Outremont,%20QC,%20Canada?0.7737991017180708 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.90it/s]
+96.127.214.190 - - [21/May/2020 19:17:31] "GET /flood/munit/5960%20Avenue%20de%20Charette,%20Montreal,%20QC,%20Canada?0.3392838079464895 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.50it/s]
+173.176.56.172 - - [21/May/2020 19:17:44] "GET /flood/munit/1820%20Rue%20de%20Dijon,%20Terrebonne,%20QC,%20Canada?0.24227749334817128 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.79it/s]
+96.127.214.190 - - [21/May/2020 19:20:24] "GET /flood/munit/5640%20Saint%20Andre%20Street,%20Montreal,%20QC,%20Canada?0.24172499254839752 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.81it/s]
+96.127.214.190 - - [21/May/2020 19:23:22] "GET /flood/munit/41%20Waniska%20Avenue,%20Etobicoke,%20ON,%20Canada?0.775706660658632 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.60it/s]
+96.127.214.190 - - [21/May/2020 19:24:01] "GET /flood/munit/900%20Avenue%20de%20l'Épée,%20Outremont,%20QC,%20Canada?0.3089575370180577 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.88it/s]
+96.127.214.190 - - [21/May/2020 19:24:19] "GET /flood/munit/41%20Waniska%20Avenue,%20Etobicoke,%20ON,%20Canada?0.6063861452168469 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.64it/s]
+96.127.214.190 - - [21/May/2020 19:24:48] "GET /flood/munit/10%20Rue%20des%20Genêts,%20La%20Fare-les-Oliviers,%20France?0.2424103870151113 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.63it/s]
+96.127.214.190 - - [21/May/2020 19:25:52] "GET /flood/munit/6666%20Saint%20Urbain%20Street,%20Montreal,%20QC,%20Canada?0.6892626683819634 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.81it/s]
+96.127.214.190 - - [21/May/2020 19:26:35] "GET /flood/munit/500%20Boulevard%20Rosemont,%20Montréal,%20QC%20H2S%203P2,%20Canada?0.5594074820650099 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.03it/s]
+96.127.214.190 - - [21/May/2020 19:27:28] "GET /flood/munit/1275%20Boulevard%20Rosemont,%20Montréal,%20QC%20H2S%203L9,%20Canada?0.9071858747591388 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.85it/s]
+96.127.214.190 - - [21/May/2020 19:27:40] "GET /flood/munit/2396%20Rue%20Beaubien%20E,%20Montréal,%20QC%20H2G%201N2,%20Canada?0.9695676069709107 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.78it/s]
+96.127.214.190 - - [21/May/2020 19:28:22] "GET /flood/munit/6289%2012e%20Avenue,%20Montréal,%20QC%20H1X%203A6,%20Canada?0.045797292349602836 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.26it/s]
+96.127.214.190 - - [21/May/2020 19:28:32] "GET /flood/munit/4466%20Rue%20Beaubien%20E,%20Montréal,%20QC%20H1T%203Y8,%20Canada?0.8690277326726887 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.62it/s]
+96.127.214.190 - - [21/May/2020 19:28:40] "GET /flood/munit/5151%20Rue%20Beaubien%20E,%20Montréal,%20QC%20H1T%201V9,%20Canada?0.5311509641336463 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.70it/s]
+96.127.214.190 - - [21/May/2020 19:28:48] "GET /flood/munit/5000%20Rue%20Beaubien%20E,%20Montréal,%20QC%20H1T%201V5,%20Canada?0.2953765365040293 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.70it/s]
+96.127.214.190 - - [21/May/2020 19:29:53] "GET /flood/munit/5430%20Avenue%20des%20Sapins,%20Montréal,%20QC%20H1T%202P8,%20Canada?0.4100659082240372 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.56it/s]
+96.127.214.190 - - [21/May/2020 19:30:16] "GET /flood/munit/5245%20Avenue%20des%20Saules,%20Montréal,%20QC%20H1T%202J1,%20Canada?0.7134860707240345 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.87it/s]
+96.127.214.190 - - [21/May/2020 19:30:51] "GET /flood/munit/5555%20Rue%20Sherbrooke%20E,%20Montréal,%20QC%20H1N%201A2,%20Canada?0.7921298477904981 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.86it/s]
+96.127.214.190 - - [21/May/2020 19:31:01] "GET /flood/munit/5455%20Rue%20Chauveau,%20Montréal,%20QC%20H1N%201G8,%20Canada?0.883345813866764 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.55it/s]
+96.127.214.190 - - [21/May/2020 19:31:24] "GET /flood/munit/5671%20Avenue%20des%20Plaines,%20Montréal,%20QC%20H1T%202X2,%20Canada?0.991193877720473 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.76it/s]
+96.127.214.190 - - [21/May/2020 19:31:57] "GET /flood/munit/4840%20Rue%20de%20Mobile,%20Montréal,%20QC%20H1T%202C2,%20Canada?0.027980584159272626 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  5.68it/s]
+96.127.214.190 - - [21/May/2020 19:32:20] "GET /flood/munit/4740%20Rue%20de%20Tonty,%20Montréal,%20QC%20H1T%202C1,%20Canada?0.4299327822415351 HTTP/1.1" 200 -
+0it [00:00, ?it/s]1it [00:00,  6.44it/s]
+0it [00:00, ?it/s]1it [00:00,  4.84it/s]
+74.58.123.225 - - [21/May/2020 19:32:29] "GET /flood/munit/5640%20Rue%20Saint-André,%20Montreal,%20QC,%20Canada?0.7234574843678672 HTTP/1.1" 200 -
+96.127.214.190 - - [21/May/2020 19:32:30] "GET /flood/munit/4821%20Rue%20de%20Mobile,%20Montréal,%20QC%20H1T%202C4,%20Canada?0.40979218699082853 HTTP/1.1" 200 -

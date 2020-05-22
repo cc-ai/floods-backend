@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torch.autograd as autograd
 import numpy as np
 import functools
+import math
 
 try:
     from itertools import izip as zip
@@ -1045,12 +1046,13 @@ class SpadeDecoder(nn.Module):
         channels, the number of channels is therefore:
             final_nc = channels(z) * 2 ** (spade_n_up - 2)
         Args:
-            latent_shape (tuple): z's shape (only the number of channels matters)
+            latent_dim (tuple): z's shape (only the number of channels matters)
             cond_nc (int): conditioning tensor's expected number of channels
             spade_n_up (int): Number of total upsamplings from z
             spade_use_spectral_norm (bool): use spectral normalization?
             spade_param_free_norm (str): norm to use before SPADE de-normalization
             spade_kernel_size (int): SPADE conv layers' kernel size
+            fullspade (bool): Produces an image as a final  result
         Returns:
             [type]: [description]
         """
@@ -1085,9 +1087,6 @@ class SpadeDecoder(nn.Module):
             spade_kernel_size,
         )
 
-        self.nospade_1 = ResBlock(self.z_nc)
-
-        """
         self.up_spades = nn.Sequential(
             *[
                 SPADEResnetBlock(
@@ -1101,11 +1100,10 @@ class SpadeDecoder(nn.Module):
                 for i in range(spade_n_up - 2)
             ]
         )
-        """
-        self.up_spades = nn.Sequential(*[ResBlock(self.z_nc) for i in range(spade_n_up - 2)])
 
-        # self.final_nc = self.z_nc // 2 ** (spade_n_up - 2)
-        self.final_nc = self.z_nc
+        self.final_nc = self.z_nc // 2 ** (spade_n_up - 2)
+
+
         self.conv_img = nn.Conv2d(self.final_nc, 3, 3, padding=1)
 
         self.upsample = nn.Upsample(scale_factor=2)
@@ -1127,18 +1125,11 @@ class SpadeDecoder(nn.Module):
         y = self.upsample(y)
         y = self.G_middle_0(y, cond)
         y = self.upsample(y)
-        # y = self.G_middle_1(y, cond)
-        y = self.nospade_1(y)
+        y = self.G_middle_1(y, cond)
 
-        """
         for i, up in enumerate(self.up_spades):
             y = self.upsample(y)
             y = up(y, cond)
-        """
-
-        for i, up in enumerate(self.up_spades):
-            y = self.upsample(y)
-            y = up(y)
 
         y = self.conv_img(F.leaky_relu(y, 2e-1))
         y = torch.tanh(y)
@@ -1166,7 +1157,7 @@ class SpadeGen(nn.Module):
             n_downsample, n_res, input_dim, dim, "in", activ, pad_type=pad_type
         )
 
-        latent_dim = dim * (2 ** n_downsample)
+        latent_dim = self.enc1_content.output_dim
 
         self.dec1 = SpadeDecoder(
             latent_dim=latent_dim,
@@ -1213,3 +1204,179 @@ class SpadeGen(nn.Module):
             print("wrong value for encoder_name, must be 0 or 1")
             return None
         return images
+
+
+class SpadeTestGen(nn.Module):
+    def __init__(self, input_dim, size, batch_size, params):
+        super(SpadeTestGen, self).__init__()
+        dim = params["dim"]
+        n_downsample = params["n_downsample"]
+        n_res = params["n_res"]
+        activ = params["activ"]
+        pad_type = params["pad_type"]
+        mlp_dim = params["mlp_dim"]
+
+        self.latent_dim = dim
+        self.batch_size = batch_size
+        self.size = size
+
+        # Get size of latent vector based on downsampling:
+        self.dec = SpadeDecoder(
+            latent_dim=self.latent_dim,
+            cond_nc=4,
+            spade_n_up=n_downsample,
+            spade_use_spectral_norm=True,
+            spade_param_free_norm="instance",
+            spade_kernel_size=3,
+        )
+
+    def forward(self, z, cond):
+        return self.dec(z, cond)
+
+
+class SpadeAdaINGen(nn.Module):
+    def __init__(self, input_dim, size, batch_size, params):
+        super(SpadeAdaINGen, self).__init__()
+        dim = params["dim"]
+        n_downsample = params["n_downsample"]
+        n_spade = params["n_spade"]
+        n_res = params["n_res"]
+        activ = params["activ"]
+        pad_type = params["pad_type"]
+        mlp_dim = params["mlp_dim"]
+        n_down_adain = params["n_down_adain"]
+
+        self.latent_dim = dim
+        self.batch_size = batch_size
+
+        # Get size of latent vector based on downsampling:
+        self.dec1 = SpadeDecoder(
+            latent_dim=self.latent_dim,
+            cond_nc=4,
+            spade_n_up=n_spade,
+            spade_use_spectral_norm=True,
+            spade_param_free_norm="instance",
+            spade_kernel_size=3,
+            fullspade=False,
+        )
+
+        nc = self.dec1.final_nc
+
+        # n_upsample, n_res, dim, output_dim
+
+        self.dec2 = Decoder(
+            n_downsample - n_spade, n_res, nc, 3, res_norm="adain", activ=activ, pad_type=pad_type,
+        )
+
+        num_adain = self.get_num_adain_params(self.dec2)
+
+        self.ParamGen = StyleEncoder(
+            n_down_adain, 3, dim, num_adain, "in", activ, pad_type=pad_type
+        )
+
+    def forward(self, z, cond, style_im):
+        y = self.dec1(z, cond)
+        adain_params = self.ParamGen(style_im)
+        self.assign_adain_params(adain_params, self.dec2)
+        y = self.dec2(y)
+        return y
+
+    def assign_adain_params(self, adain_params, model):
+        # assign the adain_params to the AdaIN layers in model
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                mean = adain_params[:, : m.num_features]
+                std = adain_params[:, m.num_features : 2 * m.num_features]
+                m.bias = mean.contiguous().view(-1)
+                m.weight = std.contiguous().view(-1)
+                if adain_params.size(1) > 2 * m.num_features:
+                    adain_params = adain_params[:, 2 * m.num_features :]
+
+    def get_num_adain_params(self, model):
+        # return the number of AdaIN parameters needed by the model
+        num_adain_params = 0
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                num_adain_params += 2 * m.num_features
+        return num_adain_params
+
+    def get_adain_param(self, style):
+        """
+        output of mlp on style
+        """
+        adain_params = self.mlp(style)
+        return adain_params
+
+
+# This one has an encoder/decoder architecture
+class SpadeAdaINGenII(nn.Module):
+    def __init__(self, input_dim, size, batch_size, params):
+        super(SpadeAdaINGenII, self).__init__()
+        dim = params["dim"]
+        n_downsample = params["n_downsample"]
+        n_spade = params["n_spade"]
+        n_res = params["n_res"]
+        activ = params["activ"]
+        pad_type = params["pad_type"]
+        mlp_dim = params["mlp_dim"]
+        n_down_adain = params["n_down_adain"]
+
+        self.latent_dim = dim
+        self.batch_size = batch_size
+
+        self.enc = ContentEncoder(n_downsample, 0, input_dim, dim, "in", activ, pad_type=pad_type)
+
+        latent_dim = self.enc.output_dim
+        self.adain = Decoder(
+            0, n_res, latent_dim, latent_dim, res_norm="adain", activ=activ, pad_type=pad_type,
+        )
+
+        self.dec = SpadeDecoder(
+            latent_dim=latent_dim,
+            cond_nc=1,
+            spade_n_up=n_downsample,
+            spade_use_spectral_norm=True,
+            spade_param_free_norm="instance",
+            spade_kernel_size=3,
+        )
+
+        num_adain = self.get_num_adain_params(self.adain)
+
+        self.ParamGen = StyleEncoder(
+            n_down_adain, 3, dim, num_adain, "in", activ, pad_type=pad_type
+        )
+
+    def forward(self, input, cond, style_im):
+        y = self.enc(input)
+        adain_params = self.ParamGen(style_im)
+        self.assign_adain_params(adain_params, self.adain)
+        y = self.adain(y)
+        y = self.dec(y, cond)
+
+        return y
+
+    def assign_adain_params(self, adain_params, model):
+        # assign the adain_params to the AdaIN layers in model
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                mean = adain_params[:, : m.num_features]
+                std = adain_params[:, m.num_features : 2 * m.num_features]
+                m.bias = mean.contiguous().view(-1)
+                m.weight = std.contiguous().view(-1)
+                if adain_params.size(1) > 2 * m.num_features:
+                    adain_params = adain_params[:, 2 * m.num_features :]
+
+    def get_num_adain_params(self, model):
+        # return the number of AdaIN parameters needed by the model
+        num_adain_params = 0
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                num_adain_params += 2 * m.num_features
+        return num_adain_params
+
+    def get_adain_param(self, style):
+        """
+        output of mlp on style
+        """
+        adain_params = self.mlp(style)
+        return adain_params
