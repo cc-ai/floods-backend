@@ -94,4 +94,3 @@ There is a Prometheus compatible metrics endpoint at `/metrics`. A simple HTTP G
 ```
 curl http://127.0.0.1:5000/metrics
 ```
-# ccaiv2
