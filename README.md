@@ -5,7 +5,7 @@
     -   [Nvidia Cuda®](#nvidia-cuda®)
     -   [Spade](#spade)
     -   [References](#references)
-    -   [Deeplab](#deeplab)
+    -   [DeepLab v2](#deeplab)
     -   [References](#references-1)
     -   [Google Etarh Engine ](#google-earth-engine)
     -   [Google Map API](#google-maps-api)
@@ -60,11 +60,11 @@ Taesung Park, Ming-Yu Liu, Ting-Chun Wang, and Jun-Yan Zhu.
 
 [Github code](https://github.com/NVLabs/SPADE)
 
-## Deeplab
+## DeepLab v2
 
 In this work we address the task of semantic image segmentation with Deep Learning and make three main contributions that are experimentally shown to have substantial practical merit. First, we highlight convolution with upsampled filters, or ‘atrous convolution’, as a powerful tool in dense prediction tasks. Atrous convolution allows us to explicitly control the resolution at which feature responses are computed within Deep Convolutional Neural Networks. It also allows us to effectively enlarge the field of view of filters to incorporate larger context without increasing the number of parameters or the amount of computation. Second, we propose atrous spatial pyramid pooling (ASPP) to robustly segment objects at multiple scales. ASPP probes an incoming convolutional feature layer with filters at multiple sampling rates and effective fields-of-views, thus capturing objects as well as image context at multiple scales. Third, we improve the localization of object boundaries by combining methods from DCNNs and probabilistic graphical models. The commonly deployed combination of max-pooling and downsampling in DCNNs achieves invariance but has a toll on localization accuracy. We overcome this by combining the responses at the final DCNN layer with a fully connected Conditional Random Field (CRF), which is shown both qualitatively and quantitatively to improve localization performance. Our proposed “DeepLab” system sets the new state-of-art at the PASCAL VOC-2012 semantic image segmentation task, reaching 79.7% mIOU in the test set, and advances the results on three other datasets: PASCAL-Context, PASCAL-Person-Part, and Cityscapes. All of our code is made publicly available online.
 
-[Deeplab](http://liangchiehchen.com/projects/DeepLab.html)
+[DeepLab v2](http://liangchiehchen.com/projects/DeepLab.html)
 
 ![DeepLab](http://liangchiehchen.com/fig/deeplab.png)
 
@@ -224,7 +224,7 @@ make develop
 
 The API server will now be available at [http://127.0.0.1:5000](http://127.0.0.1:5000). See the [API Endpoints](#api-endpoints) section for available endpoints.
 
-The server can also be launch using the command:
+The server can also be launched using the command:
 
 ```
 python3 -m ccai.bin.webserver
