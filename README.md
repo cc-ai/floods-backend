@@ -49,7 +49,7 @@ We propose spatially-adaptive normalization, a simple but effective layer for sy
 
 [Spade](https://nvlabs.github.io/SPADE/)
 
-![Spade](https://nvlabs.github.io/SPADE/images/teaser_high_res_uncompressed.png)
+![Spade](https://nvlabs.github.io/SPADE/images/method.png)
 
 ### References
 
