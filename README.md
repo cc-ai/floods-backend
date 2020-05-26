@@ -13,11 +13,10 @@
     -   [Google Cloud Platform](#google-cloud-platform)
 -   [Climate Change AI (CCAI) Backend](#climate-change-ai-ccai-backend)
     -   [How Does This Thing Work?](#how-does-this-thing-work)
+    -    [Configuration](#configuration)
+    -   [Pipeline](#pipeline)
     -   [Getting Started](#getting-started)
     -   [API Endpoints](#api-endpoints)
--   [Back & Front End Engineering](#back--front-end-engineering)
-    -   [Configuration](#configuration)
-    -   [Pipeline](#pipeline)
 
 # Welcome to Climate Change AI!
 
