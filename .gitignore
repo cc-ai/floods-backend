@@ -112,10 +112,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-
+*.out
 ccai/climate/data/*.tif
 ccai/climate/data/*.nc
-ccai/nn/configs/
 .idea/
 .vscode/
-api.py

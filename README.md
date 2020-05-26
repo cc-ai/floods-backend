@@ -239,6 +239,7 @@ CLIMATE_DATA = "data/floodMapGL_rp50y.tif"
 
 ```
 
+
 -   **FLOOD MODEL:**:The model being use for generating the image **(spade/deeplab)**
     
 -   **ROUTE MODEL**: The route of the **API** that connects to the front end
@@ -286,4 +287,4 @@ If the user activates the geolocation on his browser, the complete flow will be 
     
     -   flooded\_image\_response: The actual flooded encoded image of the original Google Street View jpg
 
-There it is, the pipeline in **6 steps** that take place in `webserver.py`
+There it is, the pipeline in **6 steps** that take place in `webserver.py
