@@ -47,7 +47,7 @@ The [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) from NVIDIA provid
 
 We propose spatially-adaptive normalization, a simple but effective layer for synthesizing photorealistic images given an input semantic layout. Previous methods directly feed the semantic layout as input to the deep network, which is then processed through stacks of convolution, normalization, and nonlinearity layers. We show that this is suboptimal as the normalization layers tend to "wash away’’ semantic information. To address the issue, we propose using the input layout for modulating the activations in normalization layers through a spatially-adaptive, learned transformation. Experiments on several challenging datasets demonstrate the advantage of the proposed method over existing approaches, regarding both visual fidelity and alignment with input layouts. Finally, our model allows user control over both semantic and style. Code is available at [this https URL](https://github.com/NVlabs/SPADE).
 
-[Spade](https://nvlabs.github.io/SPADE/images/teaser_high_res_uncompressed.png)
+[Spade](https://nvlabs.github.io/SPADE/)
 
 ![Spade](https://nvlabs.github.io/SPADE/images/teaser_high_res_uncompressed.png)
 
