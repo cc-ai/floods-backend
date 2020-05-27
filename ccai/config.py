@@ -48,7 +48,7 @@ class ConfigSingleton(Singleton):
                 value = os.environ.get(key, None)
 
                 if value is None:
-                    value = GEO_CODER
+                    value = ""
 
                 setattr(self, key, value)
 
