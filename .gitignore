@@ -118,4 +118,4 @@ ccai/climate/data/*.nc
 ccai/nn/configs/
 .idea/
 .vscode/
-api.py
+api_keys.yaml
