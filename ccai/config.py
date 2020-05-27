@@ -31,6 +31,7 @@ class ConfigSingleton(Singleton):
     API_KEYS_NAME = ["GEO_CODER_API_KEY", "STREET_VIEW_API_KEY"]
     GEO_CODER_API_KEY = GEO_CODER
     STREET_VIEW_API_KEY = STREET_VIEW
+
     API_KEYS_FILE = os.path.join(BASE_DIR, "../api_keys.yaml")
 
     def __init__(self) -> None:
