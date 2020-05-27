@@ -2,10 +2,10 @@
 
 The premise of this project was to create a visualization and simulation of flooded Google Street View images using Python, Flask and React. The landing page displays a map of flood risk, a search address bar, a flooded image of the address and relevant climate data associated to the query. 
 
-**Address bar**:                The Google Map API address search
-**Embeded map**:                A comprehensive map of flood risk
-**Google Street View**:	        A flooded image of the searched address
-**Climate data**:		Relevant climate information for the address
+**Address bar**: The Google Map API address search
+**Embeded map**: A comprehensive map of flood risk
+**Google Street View**: A flooded image of the searched address
+**Climate data**: Relevant climate information for the address
 
 -   [Welcome to Visualizing the Impacts of Climate Change!](#welcome-to-visualizing-the-impacts-of-climate-change)
 -   [Technologies](#technologies)
