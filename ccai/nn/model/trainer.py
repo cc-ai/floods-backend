@@ -2,7 +2,6 @@
 Copyright (C) 2017 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
-from comet_ml import Experiment
 from ccai.nn.model.networks import (
     SpadeGen,
     MsImageDis,
@@ -213,11 +212,11 @@ class MUNIT_Trainer(nn.Module):
     def recon_criterion(self, input, target):
         """
         Compute pixelwise L1 loss between two images input and target
-        
+
         Arguments:
             input {torch.Tensor} -- Image tensor
             target {torch.Tensor} -- Image tensor
-        
+
         Returns:
             torch.Float -- pixelwise L1 loss
         """
@@ -225,14 +224,14 @@ class MUNIT_Trainer(nn.Module):
 
     def recon_criterion_mask(self, input, target, mask):
         """
-        Compute a weaker version of the recon_criterion between two images input and target 
+        Compute a weaker version of the recon_criterion between two images input and target
         where the L1 is only computed on the unmasked region
-        
+
         Arguments:
             input {torch.Tensor} -- Image (original image such as x_a)
             target {torch.Tensor} -- Image (after cycle-translation image x_aba)
             mask {} -- binary Mask of size HxW (input.shape ~ CxHxW)
-        
+
         Returns:
             torch.Float -- L1 loss over input.(1-mask) and target.(1-mask)
         """
@@ -241,11 +240,11 @@ class MUNIT_Trainer(nn.Module):
     def forward(self, x_a, x_b, m_a, m_b):
         """
         Perform the translation from domain A (resp B) to domain B (resp A): x_a to x_ab (resp: x_b to x_ba).
-        
+
         Arguments:
             x_a {torch.Tensor} -- Image from domain A after transform in tensor format
             x_b {torch.Tensor} -- Image from domain B after transform in tensor format
-        
+
         Returns:
             torch.Tensor, torch.Tensor -- Translated version of x_a in domain B, Translated version of x_b in domain A
         """
@@ -294,13 +293,13 @@ class MUNIT_Trainer(nn.Module):
         Arguments:
             x_a {torch.Tensor} -- Image from domain A after transform in tensor format
             x_b {torch.Tensor} -- Image from domain B after transform in tensor format
-            hyperparameters {dictionnary} -- dictionnary with all hyperparameters 
+            hyperparameters {dictionnary} -- dictionnary with all hyperparameters
 
         Keyword Arguments:
             mask_a {torch.Tensor} -- binary mask (0,1) corresponding to the ground in x_a (default: {None})
             mask_b {torch.Tensor} -- binary mask (0,1) corresponding to the water in x_b (default: {None})
             comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})
-            synth {boolean}  -- binary True or False stating if we have a synthetic pair or not 
+            synth {boolean}  -- binary True or False stating if we have a synthetic pair or not
 
         Returns:
             [type] -- [description]
@@ -425,14 +424,14 @@ class MUNIT_Trainer(nn.Module):
                 )
 
     def compute_vgg_loss(self, img, target, mask=None, preprocess=True):
-        """ 
+        """
         Compute the domain-invariant perceptual loss
-        
+
         Arguments:
             vgg {model} -- popular Convolutional Network for Classification and Detection
             img {torch.Tensor} -- image before translation
             target {torch.Tensor} -- image after translation
-        
+
         Returns:
             torch.Float -- domain invariant perceptual loss
         """
@@ -453,15 +452,15 @@ class MUNIT_Trainer(nn.Module):
         return loss_G_VGG
 
     def compute_classifier_sr_loss(self, c_a, c_b, domain_synth=False, fool=False):
-        """ 
-        Compute classifier loss for the adaptation s/r 
-        
+        """
+        Compute classifier loss for the adaptation s/r
+
         Arguments:
             c_a {torch.Tensor} -- content of x_a
             c_b {torch.Tensor} -- content of x_b
             domain_synth {Boolean} -- Whether if the content is from s or r
-            fool {Boolean} -- Wheter we want to fool the classifier or not 
-        
+            fool {Boolean} -- Wheter we want to fool the classifier or not
+
         Returns:
             torch.Float -- domain invariant perceptual loss
         """
@@ -484,21 +483,21 @@ class MUNIT_Trainer(nn.Module):
         return loss
 
     def compute_domain_adv_loss(self, c_a, c_b, compute_accuracy=False, minimize=True):
-        """ 
+        """
         Compute a domain adversarial loss on the embedding of the classifier:
-        we are trying to learn an anonymized representation of the content. 
-        
+        we are trying to learn an anonymized representation of the content.
+
         Arguments:
             c_a {torch.tensor} -- content extracted from an image of domain A with encoder A
             c_b {torch.tensor} -- content extracted from an image of domain B with encoder B
-        
+
         Keyword Arguments:
             compute_accuracy {bool} -- either return only the loss or loss and softmax probs
             (default: {False})
             minimize {bool} -- optimize classification accuracy(True) or anonymized the representation(False)
-        
+
         Returns:
-            torch.Float -- loss (optionnal softmax P(classifier(c_a)=a) and P(classifier(c_b)=b)) 
+            torch.Float -- loss (optionnal softmax P(classifier(c_a)=a) and P(classifier(c_b)=b))
         """
         # Infer domain classifier on content extracted from an image of domainA
         output_a = self.domain_classifier_ab(c_a)
@@ -527,7 +526,7 @@ class MUNIT_Trainer(nn.Module):
             img1 {torch.Tensor} -- Image from domain A after transform in tensor format
             img2 {torch.Tensor} -- Image transformed
             mask {torch.Tensor} -- Binary mask where we force the loss to be zero
-            ground_truth {torch.Tensor} -- If available palletized image of size (batch, h, w) 
+            ground_truth {torch.Tensor} -- If available palletized image of size (batch, h, w)
         Returns:
             torch.float -- Cross entropy loss on the unmasked region
         """
@@ -590,7 +589,7 @@ class MUNIT_Trainer(nn.Module):
             img1 {torch.Tensor} -- Image from domain A after transform in tensor format
             img2 {torch.Tensor} -- Image transformed
             mask {torch.Tensor} -- Binary mask where we force the loss to be zero
-            ground_truth {torch.Tensor} -- If available palletized image of size (batch, h, w) 
+            ground_truth {torch.Tensor} -- If available palletized image of size (batch, h, w)
         Returns:
             torch.float -- Cross entropy loss on the unmasked region
         """
@@ -635,16 +634,16 @@ class MUNIT_Trainer(nn.Module):
         return masked_avg
 
     def sample(self, x_a, x_b, m_a, m_b):
-        """ 
+        """
         Infer the model on a batch of image
-        
+
         Arguments:
             x_a {torch.Tensor} -- batch of image from domain A
             x_b {[type]} -- batch of image from domain B
-        
+
         Returns:
             A list of torch images -- columnwise :x_a, autoencode(x_a), x_ab_1, x_ab_2
-            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a, 
+            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a,
             x_ab_1,semantic segmentation x_ab_1, x_ab_2
         """
 
@@ -689,16 +688,16 @@ class MUNIT_Trainer(nn.Module):
         )
 
     def sample_syn(self, x_a, x_b, m_a, m_b):
-        """ 
+        """
         Infer the model on a batch of image
-        
+
         Arguments:
             x_a {torch.Tensor} -- batch of image from domain A
             x_b {[type]} -- batch of image from domain B
-        
+
         Returns:
             A list of torch images -- columnwise :x_a, autoencode(x_a), x_ab_1, x_ab_2
-            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a, 
+            Or if self.semantic_w is true: x_a, autoencode(x_a), Semantic segmentation x_a,
             x_ab_1,semantic segmentation x_ab_1, x_ab_2
         """
         self.eval()
@@ -793,14 +792,14 @@ class MUNIT_Trainer(nn.Module):
     def dis_update(self, x_a, x_b, m_a, m_b, hyperparameters, comet_exp=None):
         """
         Update the weights of the discriminator
-        
+
         Arguments:
             x_a {torch.Tensor} -- Image from domain A after transform in tensor format
             x_b {torch.Tensor} -- Image from domain B after transform in tensor format
-            hyperparameters {dictionnary} -- dictionnary with all hyperparameters 
-        
+            hyperparameters {dictionnary} -- dictionnary with all hyperparameters
+
         Keyword Arguments:
-            comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})        
+            comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})
         """
 
         self.dis_opt.zero_grad()
@@ -835,14 +834,14 @@ class MUNIT_Trainer(nn.Module):
     def domain_classifier_update(self, x_a, x_b, hyperparameters, comet_exp=None):
         """
         Update the weights of the domain classifier
-        
+
         Arguments:
             x_a {torch.Tensor} -- Image from domain A after transform in tensor format
             x_b {torch.Tensor} -- Image from domain B after transform in tensor format
-            hyperparameters {dictionnary} -- dictionnary with all hyperparameters 
-        
+            hyperparameters {dictionnary} -- dictionnary with all hyperparameters
+
         Keyword Arguments:
-            comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})        
+            comet_exp {cometExperience} -- CometML object use to log all the loss and images (default: {None})
         """
         self.dann_opt.zero_grad()
 
@@ -927,7 +926,7 @@ class MUNIT_Trainer(nn.Module):
             comet_exp.log_metric("loss_semantic_head", loss.cpu().detach())
 
     def update_learning_rate(self):
-        """ 
+        """
         Update the learning rate
         """
         if self.dis_scheduler is not None:
@@ -940,11 +939,11 @@ class MUNIT_Trainer(nn.Module):
     def resume(self, checkpoint_dir, hyperparameters):
         """
         Resume the training loading the network parameters
-        
+
         Arguments:
             checkpoint_dir {string} -- path to the directory where the checkpoints are saved
-            hyperparameters {dictionnary} -- dictionnary with all hyperparameters 
-        
+            hyperparameters {dictionnary} -- dictionnary with all hyperparameters
+
         Returns:
             int -- number of iterations (used by the optimizer)
         """
@@ -983,7 +982,7 @@ class MUNIT_Trainer(nn.Module):
     def save(self, snapshot_dir, iterations):
         """
         Save generators, discriminators, and optimizers
-        
+
         Arguments:
             snapshot_dir {string} -- directory path where to save the networks weights
             iterations {int} -- number of training iterations

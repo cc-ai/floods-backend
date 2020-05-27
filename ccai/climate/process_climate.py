@@ -15,6 +15,19 @@ ds = xr.open_rasterio(os.path.join(BASE_DIR, CONFIG.CLIMATE_DATA))
 flood_risk = 100/RP
 
 def fetch_climate_data(address, RP=RP):
+    """Looks floodMapGL_rp50y.tif,
+    ccai/data and cai/data/coastal
+    using the lat/lon and returns:
+    
+    coordinates: The lat/lon of the address
+    water_level: The alfieri water level
+    shift: The new frequency at witch the flood might occur
+    coastal: The coastal water level
+    history: The historical data
+    
+    water level is the highest of alfieri and coastal
+    """
+    
     extractor = Extractor()
     coordinates = extractor.coordinates_from_address(address)
     water_level, address = fetch_water_level(coordinates, address)
