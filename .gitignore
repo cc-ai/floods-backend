@@ -117,3 +117,4 @@ ccai/climate/data/*.tif
 ccai/climate/data/*.nc
 .idea/
 .vscode/
+api_keys.yaml
