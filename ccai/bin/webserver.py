@@ -39,7 +39,7 @@ def flood(model: str, address: str) -> Response:
     """Endpoint which converts an address into a photo of the flooded future"""
 
     model_validation(model, VALID_MODELS)
-    water_level, shift, rp, flood_risk, address = fetch_climate_data(address)
+    water_level, shift, rp, flood_risk, history, address = fetch_climate_data(address)
     images = fetch_image(address)
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -53,20 +53,24 @@ def flood(model: str, address: str) -> Response:
         "flooded": flooded_image_response,
         "metadata": {
             "water_level": {
-                 "title": "Expected Water Level (in CM):",
+                 "title": " Expected Water Level (in CM):",
                  "value": water_level,
             },
             "rp": {
-                "title": "Return Period (in years):",
+                "title": " Return Period (in years):",
                 "value": rp,
             },
             "flood_risk": {
-                "title": "Flood Risk (in %):",
+                "title": " Flood Risk (in %):",
                 "value": flood_risk,
             },
             "shift": {
-                "title": "New Frequency (in %):",
+                "title": " New Frequency (in %):",
                 "value": shift,
+            },
+            "history": {
+                "title": "Historical Data:",
+                "value": history,
             },
                     },
                 }
