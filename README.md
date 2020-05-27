@@ -1,5 +1,4 @@
-
-﻿#  Visualizing the Impacts of Climate Change (VICC) Backend [![CircleCI](https://circleci.com/gh/cc-ai/floods-backend.svg?style=svg)](https://circleci.com/gh/cc-ai/floods-backend)
+#  Visualizing the Impacts of Climate Change (VICC) Backend [![CircleCI](https://circleci.com/gh/cc-ai/floods-backend.svg?style=svg)](https://circleci.com/gh/cc-ai/floods-backend)
 
 The premise of this project was to create a visualization and simulation of flooded Google Street View images using Python, Flask and React. The landing page displays a map of flood risk, a search address bar, a flooded image of the address and relevant climate data associated to the query. 
 
@@ -27,29 +26,6 @@ The premise of this project was to create a visualization and simulation of floo
     -   [API Endpoints](#api-endpoints)
 
 # Welcome to Visualizing the Impacts of Climate Change!
-
-﻿#  Climate Change AI (CCAI) Backend [![CircleCI](https://circleci.com/gh/cc-ai/floods-backend.svg?style=svg)](https://circleci.com/gh/cc-ai/floods-backend)
-
--   [Welcome to Climate Change AI!](#welcome-to-climate-change-ai)
--   [Technologies](#technologies)
-    -   [Nvidia Cuda®](#nvidia-cuda®)
-    -   [Spade](#spade)
-    -   [References](#references)
-    -   [DeepLab v2](#deeplab)
-    -   [References](#references-1)
-    -   [Google Etarh Engine ](#google-earth-engine)
-    -   [Google Map API](#google-maps-api)
--   [Infrastructure](#infrastructure)
-    -   [Google Cloud Platform](#google-cloud-platform)
--   [Climate Change AI (CCAI) Backend](#climate-change-ai-ccai-backend)
-    -   [How Does This Thing Work?](#how-does-this-thing-work)
-    -    [Configuration](#configuration)
-    -   [Pipeline](#pipeline)
-    -   [Getting Started](#getting-started)
-    -   [API Endpoints](#api-endpoints)
-
-# Welcome to Climate Change AI!
-
 
 Our project aims to raise **awareness and conceptual understanding of climate change** by bringing the future closer.
 
@@ -128,11 +104,7 @@ The Maps JavaScript API lets you customize maps with your own content and imager
 
 ## Infrastructure
 
-
 All Visualizing the Impacts of Climate Change project infrastructure use components of **Google Cloud Platform**. The back end has been deployed on a GPU enabled **Compute Engine** instance.
-
-All Climate Change AI project infrastructure use components of **Google Cloud Platform**. The back end has been deployed on a GPU enabled **Compute Engine** instance.
-
 
 ## Google Cloud Platform
 
@@ -144,15 +116,9 @@ This distribution of resources provides several benefits, including redundancy i
 
 ![Google Cloud Platform](https://1.bp.blogspot.com/-iXDDeOlKnx8/UqEh-DEil7I/AAAAAAAAAVI/9Uz2tdIAYNI/s1600/Screen+Shot+2013-12-03+at+6.13.03+PM+%281%29.png)
 
-
 ## Visualizing the Impacts of Climate Change (VICC) Backend
 
 The VICC project is an interdisciplinary project aimed at creating images of accurate, vivid, and personalized outcomes of climate change. Our goal is to use cutting-edge machine learning techniques to produce images of how neighborhoods and houses will look like following the effects of global warming. By creating a more visceral understanding of the effects of climate change, we aim to strengthen public support for necessary actions and motivate people to make impact decisions. As a prototype, we first focus on modeling flood consequences on homes.
-
-## Climate Change AI (CCAI) Backend
-
-The CCAI project is an interdisciplinary project aimed at creating images of accurate, vivid, and personalized outcomes of climate change. Our goal is to use cutting-edge machine learning techniques to produce images of how neighborhoods and houses will look like following the effects of global warming. By creating a more visceral understanding of the effects of climate change, we aim to strengthen public support for necessary actions and motivate people to make impact decisions. As a prototype, we first focus on modeling flood consequences on homes.
-
 
 For a more detailed motivation explanation, read through our [2 page executive summary](https://docs.google.com/document/d/1WQtugSBgMVB-i0RhgCg_qaP7WDj7aimWvpZytKTEqY4/edit).
 
