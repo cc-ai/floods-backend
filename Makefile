@@ -10,6 +10,8 @@ PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
 test:
 	python -m unittest discover tests
+
+lint:
 	mypy ccai tests
 	pylint ccai/** tests/**
 

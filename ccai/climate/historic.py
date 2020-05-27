@@ -5,6 +5,16 @@ import numpy as np
 filename = 'ccai/climate/data/FloodArchive.xlsx'
 
 def fetch_history(coordinates):
+    """Looks into FloodArchive.xlsx
+    fetches historical data from the lat/lon
+    and returns a historical report:
+
+    datebegin: the date that when the flood began
+    floodcause: the cause of the flood
+    suffered: how many people affected
+    numdeath: how many people died
+    dateendL how long the flood lasted
+    """
     fopen = pd.read_excel(filename)
 
     long = fopen['long']
