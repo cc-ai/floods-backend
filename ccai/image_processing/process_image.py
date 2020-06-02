@@ -14,6 +14,7 @@ def create_temp_dir(images, temp_dir):
         response.status_code = 200
         return response
 
+
 def fetch_image(address):
 
     try:
@@ -31,6 +32,7 @@ def fetch_image(address):
         response.status_code = 500
         return response
 
+
 def encode_image(temp_dir):
 
     path_to_gsv_image = os.path.join(temp_dir, "gsv_0.jpg")
@@ -43,10 +45,9 @@ def encode_image(temp_dir):
 
     return os.path.join(temp_dir, "gsv_0.jpg"), gsv_image_response
 
+
 def decode_image(temp_dir, path_to_flooded_image):
-    path_to_flooded_image_watermarked = os.path.join(
-        temp_dir, "flooded_watermarked.jpg"
-    )
+    path_to_flooded_image_watermarked = os.path.join(temp_dir, "flooded_watermarked.jpg")
     apply_watermark(path_to_flooded_image, path_to_flooded_image_watermarked)
 
     with open(path_to_flooded_image_watermarked, "rb") as flooded_image_handle:
@@ -55,7 +56,3 @@ def decode_image(temp_dir, path_to_flooded_image):
     flooded_image_response = flooded_image_encoded.decode("ascii")
 
     return flooded_image_response
-
-
-
-

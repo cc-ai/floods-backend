@@ -661,7 +661,7 @@ class MUNIT_Trainer(nn.Module):
         for i in range(x_a.size(0)):
             z = (
                 torch.empty(
-                    1, self.hyperparameters["gen"]["dim"], self.latent_size, self.latent_size,
+                    1, self.hyperparameters["gen"]["dim"], self.latent_size, self.latent_size
                 )
                 .normal_(mean=0, std=1.0)
                 .cuda()
@@ -676,16 +676,7 @@ class MUNIT_Trainer(nn.Module):
         # Overlay mask onto image:
         save_m_a = x_a - (x_a * m_a.repeat(1, 3, 1, 1)) + m_a.repeat(1, 3, 1, 1)
 
-        return (
-            x_a,
-            x_ab1,
-            x_ab1 * m_a,
-            save_m_a,
-            x_b,
-            x_bb,
-            x_bb * m_b,
-            save_m_a,
-        )
+        return (x_a, x_ab1, x_ab1 * m_a, save_m_a, x_b, x_bb, x_bb * m_b, save_m_a)
 
     def sample_syn(self, x_a, x_b, m_a, m_b):
         """
@@ -996,9 +987,7 @@ class MUNIT_Trainer(nn.Module):
         opt_name = os.path.join(snapshot_dir, "optimizer.pt")
 
         torch.save({"2": self.gen.state_dict()}, gen_name)
-        torch.save(
-            {"b": self.dis_b.state_dict(),}, dis_name,
-        )
+        torch.save({"b": self.dis_b.state_dict()}, dis_name)
         if self.domain_classif_ab:
             torch.save({"d": self.domain_classifier.state_dict()}, domain_classifier_name)
             torch.save(
@@ -1011,5 +1000,5 @@ class MUNIT_Trainer(nn.Module):
             )
         else:
             torch.save(
-                {"gen": self.gen_opt.state_dict(), "dis": self.dis_opt.state_dict()}, opt_name,
+                {"gen": self.gen_opt.state_dict(), "dis": self.dis_opt.state_dict()}, opt_name
             )

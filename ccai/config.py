@@ -9,22 +9,23 @@ from ccai.nn.model.trainer import MUNIT_Trainer as MODEL
 from api import GEO_CODER, STREET_VIEW
 
 ################################## MODEL Hyperparameters #####################################
-FLOOD_MODEL = MODEL                                                                     #
-ROUTE_MODEL = "model"                                                                        #
-FLOOD_MODE = "all"                                                                        #
-FLOOD_LEVEL = 0.4                                                                            #
-RP = 50                                                                                      #
+FLOOD_MODEL = MODEL  #
+ROUTE_MODEL = "model"  #
+FLOOD_MODE = "all"  #
+FLOOD_LEVEL = 0.4  #
+RP = 50  #
 ##############################################################################################
+
 
 class ConfigSingleton(Singleton):
     """Configuration object for the `Flask` application."""
 
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     ################################### CONFIG Hyparameters ###################################
-    MODEL_CONFIG_FILE = os.path.join(BASE_DIR, "nn/configs/config.yaml")                      #
-    MODEL_CHECKPOINT_FILE = os.path.join(BASE_DIR, "nn/configs/gen_00060000.pt")              #
-    MODEL_WEIGHT_FILE = os.path.join(BASE_DIR, "nn/configs/resnet_34_8s_cityscapes_best.pth") #
-    CLIMATE_DATA = "data/floodMapGL_rp50y.tif"                                                #
+    MODEL_CONFIG_FILE = os.path.join(BASE_DIR, "nn/configs/config.yaml")  #
+    MODEL_CHECKPOINT_FILE = os.path.join(BASE_DIR, "nn/configs/gen_00060000.pt")  #
+    MODEL_WEIGHT_FILE = os.path.join(BASE_DIR, "nn/configs/resnet_34_8s_cityscapes_best.pth")  #
+    CLIMATE_DATA = "data/floodMapGL_rp50y.tif"  #
     ###########################################################################################
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or "secret-key"

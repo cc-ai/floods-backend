@@ -8,7 +8,12 @@ import os, tempfile, torch
 from flask import Flask, Response, jsonify, send_file
 from flask_cors import CORS
 
-from ccai.image_processing.process_image import create_temp_dir, fetch_image, encode_image, decode_image
+from ccai.image_processing.process_image import (
+    create_temp_dir,
+    fetch_image,
+    encode_image,
+    decode_image,
+)
 from ccai.climate.process_climate import fetch_climate_data
 from ccai.nn.process_model import cuda_check, model_validation, model_launch
 from ccai.config import FLOOD_MODEL, ROUTE_MODEL
@@ -34,6 +39,7 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 # Check if CUDA is available
 cuda_check(MODEL)
 
+
 @app.route("/flood/<string:model>/<string:address>", methods=["GET"])
 def flood(model: str, address: str) -> Response:
     """Endpoint which converts an address into a photo of the flooded future"""
@@ -45,38 +51,25 @@ def flood(model: str, address: str) -> Response:
     with tempfile.TemporaryDirectory() as temp_dir:
         create_temp_dir(images, temp_dir)
         path_to_gsv_image, gsv_image_response = encode_image(temp_dir)
-        path_to_flooded_image = model_launch(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
-        flooded_image_response  = decode_image(temp_dir, path_to_flooded_image)
+        path_to_flooded_image = model_launch(
+            MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image
+        )
+        flooded_image_response = decode_image(temp_dir, path_to_flooded_image)
 
     response = {
         "original": gsv_image_response,
         "flooded": flooded_image_response,
         "metadata": {
-            "water_level": {
-                 "title": " Expected Water Level (in CM):",
-                 "value": water_level,
-            },
-            "rp": {
-                "title": " Return Period (in years):",
-                "value": rp,
-            },
-            "flood_risk": {
-                "title": " Flood Risk (in %):",
-                "value": flood_risk,
-            },
-            "shift": {
-                "title": " New Frequency (in %):",
-                "value": shift,
-            },
-            "history": {
-                "title": "Historical Data:",
-                "value": history,
-            },
-                    },
-                }
+            "water_level": {"title": " Expected Water Level (in CM):", "value": water_level},
+            "rp": {"title": " Return Period (in years):", "value": rp},
+            "flood_risk": {"title": " Flood Risk (in %):", "value": flood_risk},
+            "shift": {"title": " New Frequency (in %):", "value": shift},
+            "history": {"title": "Historical Data:", "value": history},
+        },
+    }
 
     return jsonify(response)
 
-if __name__ == "__main__":
-    app.run(host= '0.0.0.0', port=5000)
 
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

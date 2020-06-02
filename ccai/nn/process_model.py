@@ -12,6 +12,7 @@ import math
 from ccai.config import CONFIG
 from ccai.nn.model.segmentation import MyDataset
 
+
 def cuda_check(MODEL):
     if torch.cuda.is_available():
         MODEL_STATE_DICT = torch.load(CONFIG.MODEL_CHECKPOINT_FILE)
@@ -25,15 +26,19 @@ def cuda_check(MODEL):
 
     MODEL.eval()
 
+
 def model_validation(ROUTE_MODEL, VALID_MODELS):
     if ROUTE_MODEL.lower() not in VALID_MODELS:
         response = jsonify({"error": "Invalid model", "valid_models": VALID_MODELS})
         response.status_code = 400
         return response
 
+
 def model_launch(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
 
-    path_to_flooded_image = model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image)
+    path_to_flooded_image = model_spade(
+        MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image
+    )
 
     return path_to_flooded_image
 
@@ -49,10 +54,7 @@ def model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
             ]
         )
 
-        mask_transform = transforms.Compose(
-            [transforms.ToTensor(), ]
-        )
-
+        mask_transform = transforms.Compose([transforms.ToTensor()])
 
         # Define image path
         path_xa = path_to_gsv_image
@@ -108,9 +110,9 @@ def model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
         latent_size2 = mask.shape[-1] // (2 ** CONFIG.model_config["gen"]["n_downsample"])
 
         z = (
-            torch.empty(1, CONFIG.model_config["gen"]["dim"], latent_size1, latent_size2, )
-                .normal_(mean=0, std=1.0)
-                .cuda()
+            torch.empty(1, CONFIG.model_config["gen"]["dim"], latent_size1, latent_size2)
+            .normal_(mean=0, std=1.0)
+            .cuda()
         )
         x_a_masked = x_a * (1.0 - mask)
 
@@ -124,41 +126,40 @@ def model_spade(MODEL, MODEL_NEW_SIZE, MASK_MODEL, temp_dir, path_to_gsv_image):
 
     return path_to_flooded_image
 
+
 def model_deeplab(temp_dir, MASK_MODEL, MODEL_NEW_SIZE):
     size_mask_1 = 600
     size_mask = (int(size_mask_1), int(size_mask_1))
-    temp_dir = temp_dir +"/"
+    temp_dir = temp_dir + "/"
     path_to_gsv_image = os.path.join(temp_dir, "gsv_0.jpg")
     valid_transform = transforms.Compose(
-                    [
-                         transforms.Resize(size_mask),
-                         transforms.ToTensor(),
-                         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-                    ])
+        [
+            transforms.Resize(size_mask),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    )
 
-    val_ds=MyDataset(temp_dir,transform = valid_transform)
-    val_dl=torch.utils.data.DataLoader(val_ds,batch_size=1,shuffle=False)
+    val_ds = MyDataset(temp_dir, transform=valid_transform)
+    val_dl = torch.utils.data.DataLoader(val_ds, batch_size=1, shuffle=False)
 
     with torch.no_grad():
         for i_batch, images in tqdm.tqdm(enumerate(val_dl)):
-            imgs =images.to('cuda')
-            out_batch= MASK_MODEL(imgs.float()).cpu()
+            imgs = images.to("cuda")
+            out_batch = MASK_MODEL(imgs.float()).cpu()
             batch_size_ = len(out_batch)
             for j in range(batch_size_):
-              out1=out_batch[j,:,:,:]
-              res=out1.squeeze(0).max(0)
-              original_image=plt.imread(path_to_gsv_image)
-              original_image = imresize(original_image,size=size_mask)
-              patches =[]
-              mask_flat=np.zeros(size_mask)
-              for p in [0,1,9]:
-                mask_flat[np.where(res[1]==p)]=255
-              # Sasha: to help with the multi-channel jpg masks
-              filename = path_to_gsv_image
-              extension_length = len(filename.split('.')[-1])
-              filename_png = filename[:-extension_length-1]+'.png'
-              cv2.imwrite(filename_png,mask_flat.astype(int))
-              #cv2.imwrite(dir_mask+list_paths[it_*batch_size+j],mask_flat.astype(int))
-
-
-
+                out1 = out_batch[j, :, :, :]
+                res = out1.squeeze(0).max(0)
+                original_image = plt.imread(path_to_gsv_image)
+                original_image = imresize(original_image, size=size_mask)
+                patches = []
+                mask_flat = np.zeros(size_mask)
+                for p in [0, 1, 9]:
+                    mask_flat[np.where(res[1] == p)] = 255
+                # Sasha: to help with the multi-channel jpg masks
+                filename = path_to_gsv_image
+                extension_length = len(filename.split(".")[-1])
+                filename_png = filename[: -extension_length - 1] + ".png"
+                cv2.imwrite(filename_png, mask_flat.astype(int))
+                # cv2.imwrite(dir_mask+list_paths[it_*batch_size+j],mask_flat.astype(int))

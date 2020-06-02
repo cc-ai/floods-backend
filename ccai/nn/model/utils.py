@@ -220,10 +220,7 @@ def get_data_loader_list(
     Returns:
         loader -- data loader with transformed dataset
     """
-    transform_list = [
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ]
+    transform_list = [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     transform_list = (
         [transforms.RandomCrop((height, width))] + transform_list if crop else transform_list
     )
@@ -741,7 +738,7 @@ def get_synthetic_data_loader(
         loader -- data loader with transformed dataset
     """
     dataset = MyDatasetSynthetic(
-        file_list_a, file_list_b, mask_list, sem_list_a, sem_list_b, new_size, height, width,
+        file_list_a, file_list_b, mask_list, sem_list_a, sem_list_b, new_size, height, width
     )
     loader = DataLoader(
         dataset=dataset,
@@ -839,7 +836,7 @@ def get_data_loader_mask_and_im_and_rect(
 
 
 def get_data_loader_folder(
-    input_folder, batch_size, train, new_size=None, height=256, width=256, num_workers=4, crop=True,
+    input_folder, batch_size, train, new_size=None, height=256, width=256, num_workers=4, crop=True
 ):
     """
     Folder-based data loader with transformations
@@ -863,10 +860,7 @@ def get_data_loader_folder(
     Returns:
         [type] -- [description]
     """
-    transform_list = [
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ]
+    transform_list = [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     transform_list = (
         [transforms.RandomCrop((height, width))] + transform_list if crop else transform_list
     )
@@ -1076,7 +1070,7 @@ class Resnet34_8s(nn.Module):
         # Load the pretrained weights, remove avg pool
         # layer and get the output stride of 8
         resnet34_8s = resnet34(
-            fully_conv=True, pretrained=True, output_stride=8, remove_avg_pool_layer=True,
+            fully_conv=True, pretrained=True, output_stride=8, remove_avg_pool_layer=True
         )
 
         # Randomly initialize the 1x1 Conv scoring layer
@@ -1100,7 +1094,9 @@ class Resnet34_8s(nn.Module):
 
         x = nn.functional.upsample_bilinear(input=x, size=input_spatial_dim)
         # x = nn.functional.interpolate(input=x, size=input_spatial_dim, mode="bilinear")
-        print("#######################################################################################")
+        print(
+            "#######################################################################################"
+        )
 
         return x
 

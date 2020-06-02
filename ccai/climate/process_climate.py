@@ -3,7 +3,7 @@ import pandas as pd
 import os, geopy.distance, time, json, textwrap
 
 from googleplaces import GooglePlaces, types, lang
-from ccai.config import FLOOD_LEVEL,FLOOD_MODE, RP
+from ccai.config import FLOOD_LEVEL, FLOOD_MODE, RP
 from ccai.climate.extractor import Extractor
 from ccai.climate.frequency import shift_frequency
 from ccai.climate.coastal import fetch_coastal
@@ -12,7 +12,8 @@ from ccai.config import CONFIG
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 ds = xr.open_rasterio(os.path.join(BASE_DIR, CONFIG.CLIMATE_DATA))
-flood_risk = 100/RP
+flood_risk = 100 / RP
+
 
 def fetch_climate_data(address, RP=RP):
     """Looks floodMapGL_rp50y.tif,
@@ -27,7 +28,7 @@ def fetch_climate_data(address, RP=RP):
     
     water level is the highest of alfieri and coastal
     """
-    
+
     extractor = Extractor()
     coordinates = extractor.coordinates_from_address(address)
     water_level, address = fetch_water_level(coordinates, address)
@@ -48,8 +49,9 @@ def fetch_climate_data(address, RP=RP):
 
     return water_level, shift, RP, flood_risk, history, address
 
+
 def fetch_water_level(coordinates, address, band=1):
-    water_level = ds.sel(band=band, x=coordinates.lon, y=coordinates.lat, method='nearest').values
+    water_level = ds.sel(band=band, x=coordinates.lon, y=coordinates.lat, method="nearest").values
     water_level = water_level * 100
     water_level = int(water_level)
 
@@ -66,12 +68,16 @@ def fetch_water_level(coordinates, address, band=1):
 
     return water_level, address
 
+
 def fetch_places(coordinates):
     google_places = GooglePlaces(CONFIG.STREET_VIEW_API_KEY)
 
     query_result = google_places.nearby_search(
         lat_lng={"lat": coordinates.lat, "lng": coordinates.lon},
-        keyword='landmark', radius=20000, types=[types.TYPE_TOURIST_ATTRACTION])
+        keyword="landmark",
+        radius=20000,
+        types=[types.TYPE_TOURIST_ATTRACTION],
+    )
 
     place_count = 0
     for place in query_result.places:
@@ -80,10 +86,3 @@ def fetch_places(coordinates):
             place_count = place_count + 1
 
         return place.formatted_address
-
-
-
-
-
-
-

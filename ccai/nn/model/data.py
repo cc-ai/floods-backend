@@ -25,12 +25,7 @@ def default_flist_reader(flist):
 
 class ImageFilelist(data.Dataset):
     def __init__(
-        self,
-        root,
-        flist,
-        transform=None,
-        flist_reader=default_flist_reader,
-        loader=default_loader,
+        self, root, flist, transform=None, flist_reader=default_flist_reader, loader=default_loader
     ):
         self.root = root
         self.imlist = flist_reader(flist)
@@ -51,12 +46,7 @@ class ImageFilelist(data.Dataset):
 
 class ImageLabelFilelist(data.Dataset):
     def __init__(
-        self,
-        root,
-        flist,
-        transform=None,
-        flist_reader=default_flist_reader,
-        loader=default_loader,
+        self, root, flist, transform=None, flist_reader=default_flist_reader, loader=default_loader
     ):
         self.root = root
         self.imlist = flist_reader(os.path.join(self.root, flist))
@@ -64,9 +54,7 @@ class ImageLabelFilelist(data.Dataset):
         self.loader = loader
         self.classes = sorted(list(set([path.split("/")[0] for path in self.imlist])))
         self.class_to_idx = {self.classes[i]: i for i in range(len(self.classes))}
-        self.imgs = [
-            (impath, self.class_to_idx[impath.split("/")[0]]) for impath in self.imlist
-        ]
+        self.imgs = [(impath, self.class_to_idx[impath.split("/")[0]]) for impath in self.imlist]
 
     def __getitem__(self, index):
         impath, label = self.imgs[index]
@@ -92,18 +80,7 @@ from PIL import Image
 import os
 import os.path
 
-IMG_EXTENSIONS = [
-    ".jpg",
-    ".JPG",
-    ".jpeg",
-    ".JPEG",
-    ".png",
-    ".PNG",
-    ".ppm",
-    ".PPM",
-    ".bmp",
-    ".BMP",
-]
+IMG_EXTENSIONS = [".jpg", ".JPG", ".jpeg", ".JPEG", ".png", ".PNG", ".ppm", ".PPM", ".bmp", ".BMP"]
 
 
 def is_image_file(filename):

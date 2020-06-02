@@ -146,35 +146,21 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(
-            block, 512, layers[3], stride=2, multi_grid=multi_grid
-        )
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
 
         self.additional_blocks = additional_blocks
 
         if additional_blocks == 1:
-            self.layer5 = self._make_layer(
-                block, 512, layers[3], stride=2, multi_grid=multi_grid
-            )
+            self.layer5 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
 
         if additional_blocks == 2:
-            self.layer5 = self._make_layer(
-                block, 512, layers[3], stride=2, multi_grid=multi_grid
-            )
-            self.layer6 = self._make_layer(
-                block, 512, layers[3], stride=2, multi_grid=multi_grid
-            )
+            self.layer5 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
+            self.layer6 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
 
         if additional_blocks == 3:
-            self.layer5 = self._make_layer(
-                block, 512, layers[3], stride=2, multi_grid=multi_grid
-            )
-            self.layer6 = self._make_layer(
-                block, 512, layers[3], stride=2, multi_grid=multi_grid
-            )
-            self.layer7 = self._make_layer(
-                block, 512, layers[3], stride=2, multi_grid=multi_grid
-            )
+            self.layer5 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
+            self.layer6 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
+            self.layer7 = self._make_layer(block, 512, layers[3], stride=2, multi_grid=multi_grid)
 
         self.avgpool = nn.AvgPool2d(7)
 
@@ -227,23 +213,15 @@ class ResNet(nn.Module):
 
         layers = []
 
-        dilation = (
-            multi_grid[0] * self.current_dilation
-            if multi_grid
-            else self.current_dilation
-        )
+        dilation = multi_grid[0] * self.current_dilation if multi_grid else self.current_dilation
 
-        layers.append(
-            block(self.inplanes, planes, stride, downsample, dilation=dilation)
-        )
+        layers.append(block(self.inplanes, planes, stride, downsample, dilation=dilation))
 
         self.inplanes = planes * block.expansion
 
         for i in range(1, blocks):
             dilation = (
-                multi_grid[i] * self.current_dilation
-                if multi_grid
-                else self.current_dilation
+                multi_grid[i] * self.current_dilation if multi_grid else self.current_dilation
             )
             layers.append(block(self.inplanes, planes, dilation=dilation))
 
@@ -294,9 +272,7 @@ def resnet18(pretrained=False, **kwargs):
     if pretrained:
 
         if model.additional_blocks:
-            model.load_state_dict(
-                model_zoo.load_url(model_urls["resnet18"]), strict=False
-            )
+            model.load_state_dict(model_zoo.load_url(model_urls["resnet18"]), strict=False)
 
             return model
 
@@ -316,9 +292,7 @@ def resnet34(pretrained=False, **kwargs):
     if pretrained:
 
         if model.additional_blocks:
-            model.load_state_dict(
-                model_zoo.load_url(model_urls["resnet34"]), strict=False
-            )
+            model.load_state_dict(model_zoo.load_url(model_urls["resnet34"]), strict=False)
 
             return model
 
@@ -338,9 +312,7 @@ def resnet50(pretrained=False, **kwargs):
     if pretrained:
 
         if model.additional_blocks:
-            model.load_state_dict(
-                model_zoo.load_url(model_urls["resnet50"]), strict=False
-            )
+            model.load_state_dict(model_zoo.load_url(model_urls["resnet50"]), strict=False)
 
             return model
 
@@ -360,9 +332,7 @@ def resnet101(pretrained=False, **kwargs):
     if pretrained:
 
         if model.additional_blocks:
-            model.load_state_dict(
-                model_zoo.load_url(model_urls["resnet101"]), strict=False
-            )
+            model.load_state_dict(model_zoo.load_url(model_urls["resnet101"]), strict=False)
 
             return model
 
@@ -381,4 +351,3 @@ def resnet152(pretrained=False, **kwargs):
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls["resnet152"]))
     return model
-

@@ -20,14 +20,16 @@ class Coordinates:
     lat: float
     lon: float
 
+
 @dataclass
 class ClimateMetadata:
     """Data class for passing around climate metadata"""
 
-    water_level : float
-    shift : float
-    rp : int
-    flood_risk : float
+    water_level: float
+    shift: float
+    rp: int
+    flood_risk: float
+
 
 class Extractor(Singleton):
     """Class for extracting relevant climate data given an address or lat/long"""
@@ -44,7 +46,6 @@ class Extractor(Singleton):
         result = self.geocoder.get(address)
         return Coordinates(lat=result[0].geometry.location.lat, lon=result[0].geometry.location.lng)
 
-
     def metadata_for_address(self, address: str) -> ClimateMetadata:
         """Calculate climate metadata for a given address"""
         coords = self.coordinates_from_address(address)
@@ -52,7 +53,4 @@ class Extractor(Singleton):
             water_level, shift, rp, flood_risk = fetch_climate_data(address)
         except IndexError:
             water_level = "0"
-        return ClimateMetadata(
-
-            water_level=water_level,
-        )
+        return ClimateMetadata(water_level=water_level)

@@ -471,7 +471,7 @@ class StyleEncoder(nn.Module):
         ]
         for i in range(2):
             self.model += [
-                Conv2dBlock(dim, 2 * dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type,)
+                Conv2dBlock(dim, 2 * dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)
             ]
             dim *= 2
         for i in range(n_downsample - 2):
@@ -497,7 +497,7 @@ class ContentEncoder(nn.Module):
         # downsampling blocks
         for i in range(n_downsample):
             self.model += [
-                Conv2dBlock(dim, 2 * dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type,)
+                Conv2dBlock(dim, 2 * dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)
             ]
             dim *= 2
 
@@ -512,7 +512,7 @@ class ContentEncoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(
-        self, n_upsample, n_res, dim, output_dim, res_norm="adain", activ="relu", pad_type="zero",
+        self, n_upsample, n_res, dim, output_dim, res_norm="adain", activ="relu", pad_type="zero"
     ):
         super(Decoder, self).__init__()
 
@@ -523,16 +523,12 @@ class Decoder(nn.Module):
         for i in range(n_upsample):
             self.model += [
                 nn.Upsample(scale_factor=2),
-                Conv2dBlock(
-                    dim, dim // 2, 5, 1, 2, norm="ln", activation=activ, pad_type=pad_type,
-                ),
+                Conv2dBlock(dim, dim // 2, 5, 1, 2, norm="ln", activation=activ, pad_type=pad_type),
             ]
             dim //= 2
         # use reflection padding in the last conv layer
         self.model += [
-            Conv2dBlock(
-                dim, output_dim, 7, 1, 3, norm="none", activation="tanh", pad_type=pad_type,
-            )
+            Conv2dBlock(dim, output_dim, 7, 1, 3, norm="none", activation="tanh", pad_type=pad_type)
         ]
         self.model = nn.Sequential(*self.model)
 
@@ -989,7 +985,7 @@ class SPADE(nn.Module):
 ##################################################################################
 class SPADEResnetBlock(nn.Module):
     def __init__(
-        self, fin, fout, cond_nc, spade_use_spectral_norm, spade_param_free_norm, spade_kernel_size,
+        self, fin, fout, cond_nc, spade_use_spectral_norm, spade_param_free_norm, spade_kernel_size
     ):
         super().__init__()
         # Attributes
@@ -1294,7 +1290,7 @@ class SpadeAdaINGen(nn.Module):
         # n_upsample, n_res, dim, output_dim
 
         self.dec2 = Decoder(
-            n_downsample - n_spade, n_res, nc, 3, res_norm="adain", activ=activ, pad_type=pad_type,
+            n_downsample - n_spade, n_res, nc, 3, res_norm="adain", activ=activ, pad_type=pad_type
         )
 
         num_adain = self.get_num_adain_params(self.dec2)
